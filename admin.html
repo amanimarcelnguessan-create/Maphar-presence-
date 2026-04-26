@@ -528,9 +528,9 @@ async function loadPresences() {
   if (presenceUnsub) presenceUnsub();
   presenceUnsub = db.collection('maphar_presences')
     .where('reunionId','==',rid)
-    .orderBy('timestamp','asc')
     .onSnapshot(snap=>{
       presences=snap.docs.map(d=>({id:d.id,...d.data()}));
+      presences.sort((a,b)=>(a.dateSignature||"").localeCompare(b.dateSignature||""));
       renderPresences();
     });
 }
