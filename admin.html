@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin – Présences Bureau Exécutif MAPHAR</title>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    :root{--navy:#0f2557;--blue:#1641a4;--blue2:#2156d4;--sky:#eef2ff;--green:#059669;--red:#dc2626;--grey:#64748b;--border:#e2e8f0;--bg:#f4f6fb;--card:#fff}
+    body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:#0f172a;min-height:100vh}
+
+    /* LOGIN */
+    #loginScreen{position:fixed;inset:0;background:linear-gradient(160deg,#0f2557,#1641a4 60%,#2156d4);display:flex;align-items:center;justify-content:center;z-index:9999;padding:20px}
+    .login-box{background:#fff;border-radius:28px;padding:44px 36px;width:100%;max-width:380px;text-align:center;box-shadow:0 32px 80px rgba(0,0,0,.4)}
+    .login-badge{width:68px;height:68px;background:linear-gradient(135deg,#0f2557,#1641a4);border-radius:18px;display:flex;align-items:center;justify-content:center;font-size:34px;margin:0 auto 20px;box-shadow:0 8px 20px rgba(22,65,164,.35)}
+    .login-title{font-size:24px;font-weight:800;color:var(--navy)}
+    .login-sub{font-size:13px;color:var(--grey);margin:6px 0 30px}
+    .login-box input[type=password]{width:100%;padding:14px 16px;border:2px solid var(--border);border-radius:14px;font-family:inherit;font-size:20px;text-align:center;letter-spacing:10px;outline:none;background:#fafbff;transition:border-color .2s,box-shadow .2s}
+    .login-box input[type=password]:focus{border-color:var(--blue2);box-shadow:0 0 0 3px rgba(33,86,212,.12)}
+    .login-box input.shake{animation:shake .35s;border-color:var(--red)}
+    @keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-10px)}60%{transform:translateX(10px)}}
+    .login-btn{width:100%;margin-top:14px;padding:14px;background:linear-gradient(135deg,#1641a4,#2156d4);color:#fff;border:none;border-radius:14px;font-family:inherit;font-size:15px;font-weight:700;cursor:pointer;transition:opacity .2s,transform .15s}
+    .login-btn:hover{opacity:.92;transform:translateY(-1px)}
+    .login-err{color:var(--red);font-size:13px;margin-top:10px;min-height:20px;font-weight:500}
+
+    /* FIREBASE SETUP BANNER */
+    #setupBanner{display:none;position:fixed;inset:0;background:linear-gradient(160deg,#0f2557,#1641a4);z-index:8000;overflow-y:auto;padding:30px 20px}
+    .setup-card{background:#fff;border-radius:24px;padding:36px;max-width:640px;margin:0 auto;box-shadow:0 24px 60px rgba(0,0,0,.3)}
+    .setup-card h2{font-size:20px;font-weight:800;color:var(--navy);margin-bottom:6px}
+    .setup-card p{font-size:13px;color:var(--grey);line-height:1.6;margin-bottom:20px}
+    .step{background:#f8fafc;border-left:4px solid var(--blue);border-radius:0 12px 12px 0;padding:14px 18px;margin-bottom:12px}
+    .step strong{display:block;font-size:13px;font-weight:700;color:var(--navy);margin-bottom:4px}
+    .step span{font-size:12px;color:var(--grey);line-height:1.6}
+    .code{background:#1e293b;color:#7dd3fc;font-family:monospace;font-size:11px;border-radius:10px;padding:14px 16px;margin:12px 0;white-space:pre;overflow-x:auto;line-height:1.7}
+    .setup-ok-btn{width:100%;padding:14px;background:linear-gradient(135deg,#1641a4,#2156d4);color:#fff;border:none;border-radius:14px;font-family:inherit;font-size:14px;font-weight:700;cursor:pointer;margin-top:10px}
+
+    /* APP */
+    #appScreen{display:none;min-height:100vh}
+    .top-bar{background:var(--navy);height:58px;padding:0 24px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:100;box-shadow:0 2px 12px rgba(0,0,0,.2)}
+    .tb-logo{font-size:24px}.tb-name{font-size:16px;font-weight:800;color:#fff;letter-spacing:.5px}
+    .tb-badge{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);color:rgba(255,255,255,.8);font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px}
+    .tb-spacer{flex:1}
+    .tb-logout{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:rgba(255,255,255,.85);padding:6px 14px;border-radius:8px;font-family:inherit;font-size:12px;font-weight:600;cursor:pointer}
+    .tabs{background:#fff;border-bottom:2px solid var(--border);display:flex;padding:0 24px;position:sticky;top:58px;z-index:99}
+    .tab{padding:14px 22px;font-size:13px;font-weight:700;color:var(--grey);border:none;background:none;cursor:pointer;border-bottom:3px solid transparent;transition:all .2s;margin-bottom:-2px;font-family:inherit}
+    .tab.active{color:var(--blue);border-bottom-color:var(--blue)}
+    .content{padding:28px 24px;max-width:1080px;margin:0 auto}
+    .panel{display:none}.panel.active{display:block}
+
+    /* CARD */
+    .card{background:var(--card);border-radius:18px;padding:24px;box-shadow:0 1px 6px rgba(15,37,87,.07),0 4px 16px rgba(15,37,87,.04);margin-bottom:20px}
+    .card-title{font-size:15px;font-weight:700;color:var(--navy);margin-bottom:20px;display:flex;align-items:center;gap:8px}
+
+    /* FORM */
+    .f-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+    @media(max-width:640px){.f-grid{grid-template-columns:1fr}}
+    .f-group label{display:block;font-size:11px;font-weight:700;color:var(--grey);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+    .f-group input,.f-group select{width:100%;padding:11px 14px;border:1.5px solid var(--border);border-radius:11px;font-family:inherit;font-size:14px;color:#111;background:#fafbff;outline:none;transition:border-color .2s,box-shadow .2s}
+    .f-group input:focus,.f-group select:focus{border-color:var(--blue2);background:#fff;box-shadow:0 0 0 3px rgba(33,86,212,.08)}
+
+    /* BUTTONS */
+    .btn{display:inline-flex;align-items:center;gap:6px;padding:10px 18px;border:none;border-radius:10px;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;transition:all .15s}
+    .btn-primary{background:var(--blue);color:#fff}.btn-primary:hover{background:var(--navy);transform:translateY(-1px)}
+    .btn-green{background:var(--green);color:#fff}.btn-green:hover{background:#047857}
+    .btn-outline{background:#fff;color:var(--blue);border:2px solid var(--blue)}.btn-outline:hover{background:var(--sky)}
+    .btn-red{background:var(--red);color:#fff}.btn-red:hover{background:#b91c1c}
+    .btn-sm{padding:6px 12px;font-size:12px;border-radius:8px}
+    .btn-xs{padding:4px 10px;font-size:11px;border-radius:7px;border:1.5px solid currentColor}
+
+    /* TWO-COL */
+    .two-col{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+    @media(max-width:768px){.two-col{grid-template-columns:1fr}}
+
+    /* REUNION LIST */
+    .r-list{display:flex;flex-direction:column;gap:10px}
+    .r-item{display:flex;align-items:center;gap:12px;padding:14px 16px;border:1.5px solid var(--border);border-radius:13px;cursor:pointer;transition:all .2s}
+    .r-item:hover{border-color:#bfdbfe;background:#f0f7ff}.r-item.sel{border-color:var(--blue);background:var(--sky)}
+    .r-dot{width:10px;height:10px;border-radius:50%;background:var(--border);flex-shrink:0}.r-item.sel .r-dot{background:var(--blue)}
+    .r-info{flex:1;min-width:0}
+    .r-label{font-size:14px;font-weight:600;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .r-date{font-size:12px;color:var(--grey);margin-top:2px}
+    .r-count{background:#e0e7ff;color:#3730a3;border-radius:20px;padding:3px 11px;font-size:12px;font-weight:700;white-space:nowrap}
+    .r-del{color:#cbd5e1;cursor:pointer;font-size:16px;padding:4px;flex-shrink:0}.r-del:hover{color:var(--red)}
+
+    /* QR */
+    .qr-area{display:flex;flex-direction:column;align-items:center;gap:16px}
+    .qr-area img{border:8px solid #fff;box-shadow:0 0 0 1px var(--border);border-radius:8px}
+    .qr-meta{text-align:center}
+    .qr-reunion-name{font-size:15px;font-weight:700;color:var(--navy)}
+    .qr-reunion-date{font-size:12px;color:var(--grey);margin-top:3px;text-transform:capitalize}
+    .qr-empty{text-align:center;padding:40px 20px;color:#94a3b8}
+    .qr-empty .icon{font-size:44px;margin-bottom:10px}.qr-empty .msg{font-size:13px}
+
+    /* TABLE */
+    .tbl-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px}
+    .search-input{flex:1;min-width:180px;padding:9px 14px;border:1.5px solid var(--border);border-radius:10px;font-family:inherit;font-size:13px;outline:none;transition:border-color .2s}
+    .search-input:focus{border-color:var(--blue)}
+    .count-pill{background:#f1f5f9;border-radius:8px;padding:7px 14px;font-size:13px;font-weight:700;color:var(--grey);white-space:nowrap}
+    .table-wrap{overflow-x:auto;border-radius:14px;border:1px solid var(--border)}
+    table{width:100%;border-collapse:collapse;font-size:13px}
+    thead{background:#f8fafc}
+    thead th{padding:12px 14px;text-align:left;font-size:11px;font-weight:700;color:var(--grey);text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border);white-space:nowrap}
+    tbody tr{border-bottom:1px solid #f1f5f9;transition:background .1s}
+    tbody tr:hover{background:#fafbff}
+    tbody tr:last-child{border-bottom:none}
+    tbody td{padding:11px 14px;color:#334155}
+    .td-actions{display:flex;gap:6px}
+    .empty-tbl{text-align:center;padding:60px 20px;color:#94a3b8}
+    .empty-tbl .e-icon{font-size:44px;margin-bottom:12px}
+    .empty-tbl .e-title{font-size:15px;font-weight:600}
+    .empty-tbl .e-sub{font-size:13px;margin-top:4px}
+
+    /* REUNION BAR */
+    .reunion-bar{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:14px 22px}
+    .reunion-bar label{font-size:13px;font-weight:700;color:var(--grey);white-space:nowrap}
+    .reunion-bar select{flex:1;min-width:220px;padding:9px 12px;border:1.5px solid var(--border);border-radius:10px;font-family:inherit;font-size:13px;outline:none}
+
+    /* MODAL */
+    .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;z-index:500;padding:20px;backdrop-filter:blur(2px)}
+    .modal-bg.show{display:flex}
+    .modal{background:#fff;border-radius:22px;padding:30px;width:100%;max-width:480px;box-shadow:0 24px 60px rgba(0,0,0,.3);animation:slideUp .25s ease}
+    @keyframes slideUp{from{transform:translateY(20px);opacity:0}to{transform:translateY(0);opacity:1}}
+    .modal-title{font-size:18px;font-weight:800;color:var(--navy);margin-bottom:22px}
+    .modal-foot{display:flex;gap:10px;justify-content:flex-end;margin-top:24px}
+
+    /* TOAST */
+    .toast{position:fixed;bottom:24px;right:24px;background:#0f172a;color:#fff;padding:13px 20px;border-radius:12px;font-size:13px;font-weight:600;box-shadow:0 8px 20px rgba(0,0,0,.2);opacity:0;pointer-events:none;transition:opacity .3s,transform .3s;transform:translateY(8px);z-index:9999}
+    .toast.show{opacity:1;transform:translateY(0)}
+    .toast.ok{background:var(--green)}.toast.err{background:var(--red)}
+    .divider{height:1px;background:var(--border);margin:16px 0}
+    @media print{.no-print{display:none!important}}
+  </style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="loginScreen">
+  <div class="login-box">
+    <div class="login-badge">🏛️</div>
+    <div class="login-title">MAPHAR Admin</div>
+    <div class="login-sub">Gestion des feuilles de présence<br>Bureau Exécutif</div>
+    <input type="password" id="pwdInput" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()">
+    <button class="login-btn" onclick="doLogin()">🔐 Connexion sécurisée</button>
+    <div class="login-err" id="loginErr"></div>
+  </div>
+</div>
+
+<!-- FIREBASE SETUP GUIDE -->
+<div id="setupBanner">
+  <div class="setup-card">
+    <h2>⚙️ Configuration Firebase requise</h2>
+    <p>Firebase n'est pas encore configuré. Suivez ces 4 étapes pour activer la base de données cloud.</p>
+
+    <div class="step">
+      <strong>Étape 1 – Créer le projet Firebase</strong>
+      <span>Allez sur <b>console.firebase.google.com</b> → "Ajouter un projet" → Nommez-le <b>maphar-presences</b></span>
+    </div>
+
+    <div class="step">
+      <strong>Étape 2 – Activer Firestore</strong>
+      <span>Dans le projet → "Firestore Database" → "Créer une base de données" → Mode Production → Choisir une région (eur3 recommandé)</span>
+    </div>
+
+    <div class="step">
+      <strong>Étape 3 – Configurer les règles Firestore</strong>
+      <span>Onglet "Règles" → Remplacez par :</span>
+      <div class="code">rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /maphar_reunions/{id} {
+      allow read: if true;
+      allow write: if true;
+    }
+    match /maphar_presences/{id} {
+      allow read, write: if true;
+    }
+  }
+}</div>
+    </div>
+
+    <div class="step">
+      <strong>Étape 4 – Coller la configuration dans ce fichier</strong>
+      <span>Paramètres du projet → "Vos applications" → Ajouter une app Web → Copier les valeurs dans le bloc <b>firebaseConfig</b> en haut de <b>admin.html</b> et <b>scan.html</b></span>
+    </div>
+
+    <div class="step">
+      <strong>Étape 5 – Définir votre URL GitHub Pages</strong>
+      <span>Dans le bloc <b>CONFIG</b> de admin.html, remplacez <b>baseUrl</b> par l'URL de votre dépôt GitHub Pages</span>
+    </div>
+
+    <button class="setup-ok-btn" onclick="document.getElementById('setupBanner').style.display='none'">
+      ✅ J'ai configuré Firebase – Retour à l'application
+    </button>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="appScreen">
+  <header class="top-bar no-print">
+    <span class="tb-logo">🏛️</span>
+    <span class="tb-name">MAPHAR</span>
+    <span class="tb-badge">Administration</span>
+    <span class="tb-spacer"></span>
+    <button class="tb-logout" onclick="doLogout()">⎋ Déconnexion</button>
+  </header>
+
+  <nav class="tabs no-print">
+    <button class="tab active" id="tabBtn-reunions" onclick="switchTab('reunions')">📅 Réunions &amp; QR</button>
+    <button class="tab" id="tabBtn-presences" onclick="switchTab('presences')">👥 Présences</button>
+  </nav>
+
+  <div class="content">
+
+    <!-- TAB RÉUNIONS -->
+    <div id="tab-reunions" class="panel active">
+      <div class="card no-print">
+        <div class="card-title">➕ Nouvelle Réunion</div>
+        <div class="f-grid">
+          <div class="f-group">
+            <label>Intitulé *</label>
+            <input type="text" id="newLabel" placeholder="Ex : Réunion mensuelle – Mai 2026">
+          </div>
+          <div class="f-group">
+            <label>Date *</label>
+            <input type="date" id="newDate">
+          </div>
+        </div>
+        <div style="margin-top:14px">
+          <button class="btn btn-primary" onclick="createReunion()">📅 Créer la réunion</button>
+        </div>
+      </div>
+
+      <div class="two-col">
+        <div class="card">
+          <div class="card-title">📋 Réunions existantes</div>
+          <div class="r-list" id="rList">
+            <div class="empty-tbl"><div class="e-icon">📅</div><div class="e-title">Aucune réunion</div><div class="e-sub">Créez votre première réunion</div></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">📲 Code QR à imprimer</div>
+          <div id="qrEmpty" class="qr-empty">
+            <div class="icon">📲</div>
+            <div class="msg">Sélectionnez une réunion<br>pour générer son QR code</div>
+          </div>
+          <div id="qrReady" style="display:none">
+            <div class="qr-area">
+              <img id="qrImg" src="" alt="QR Code" width="220" height="220">
+              <div class="qr-meta">
+                <div class="qr-reunion-name" id="qrName"></div>
+                <div class="qr-reunion-date" id="qrDate"></div>
+              </div>
+            </div>
+            <div style="display:flex;gap:10px;margin-top:20px;flex-wrap:wrap" class="no-print">
+              <button class="btn btn-outline" onclick="printQR()">🖨️ Imprimer le QR</button>
+              <button class="btn btn-primary" onclick="goToPresences()">👥 Voir les présences</button>
+            </div>
+            <div class="divider no-print"></div>
+            <div style="font-size:11px;color:var(--grey)" class="no-print">🔗 <span id="qrUrl" style="word-break:break-all"></span></div>
+          </div>
+        </div>
+      </div>
+    </div><!-- /tab-reunions -->
+
+    <!-- TAB PRÉSENCES -->
+    <div id="tab-presences" class="panel">
+      <div class="card no-print" style="padding:0">
+        <div class="reunion-bar">
+          <label>Réunion :</label>
+          <select id="rSelect" onchange="loadPresences()">
+            <option value="">— Choisir une réunion —</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">📋 Feuille de présence</div>
+        <div class="tbl-actions no-print">
+          <input class="search-input" id="srch" placeholder="🔍 Rechercher…" oninput="filterTbl()">
+          <span class="count-pill" id="cntPill">0 présent</span>
+          <button class="btn btn-green" onclick="exportCSV()">📊 CSV</button>
+          <button class="btn btn-outline" onclick="printPresences()">🖨️ Imprimer</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>#</th><th>Prénom</th><th>Nom</th><th>Fonction</th><th>Téléphone</th><th>Email</th><th>Heure</th><th class="no-print">Actions</th></tr>
+            </thead>
+            <tbody id="tBody">
+              <tr><td colspan="8"><div class="empty-tbl"><div class="e-icon">👥</div><div class="e-title">Sélectionnez une réunion</div></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div><!-- /appScreen -->
+
+<!-- MODAL ÉDITION -->
+<div class="modal-bg no-print" id="editBg">
+  <div class="modal">
+    <div class="modal-title">✏️ Modifier la présence</div>
+    <input type="hidden" id="eId">
+    <div class="f-grid">
+      <div class="f-group"><label>Prénom *</label><input type="text" id="e-prenom"></div>
+      <div class="f-group"><label>Nom *</label><input type="text" id="e-nom"></div>
+      <div class="f-group"><label>Fonction *</label><input type="text" id="e-fonction"></div>
+      <div class="f-group"><label>Téléphone *</label><input type="tel" id="e-telephone"></div>
+      <div class="f-group" style="grid-column:1/-1"><label>Email</label><input type="email" id="e-email"></div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-outline" onclick="closeModal()">Annuler</button>
+      <button class="btn btn-primary" onclick="saveEdit()">💾 Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════
+// ⚙️  CONFIGURATION  —  MODIFIEZ CES VALEURS
+// ═══════════════════════════════════════════════════════
+const CONFIG = {
+  password:    "MAPHAR2026",
+  baseUrl:     "https://USERNAME.github.io/REPO",   // ← votre URL GitHub Pages
+  scanFile:    "scan.html",
+  orgName:     "MAPHAR",
+  orgFullName: "Mutuelle pour l'Assurance des Pharmaciens"
+};
+
+const firebaseConfig = {
+  apiKey:            "VOTRE_API_KEY",
+  authDomain:        "VOTRE_PROJECT.firebaseapp.com",
+  projectId:         "VOTRE_PROJECT_ID",
+  storageBucket:     "VOTRE_PROJECT.appspot.com",
+  messagingSenderId: "VOTRE_SENDER_ID",
+  appId:             "VOTRE_APP_ID"
+};
+// ═══════════════════════════════════════════════════════
+
+// ── Détection si Firebase est configuré
+const FB_CONFIGURED = !Object.values(firebaseConfig).some(v => v.includes('VOTRE'));
+
+let db = null;
+
+function loadFirebase() {
+  return new Promise((resolve, reject) => {
+    if (!FB_CONFIGURED) { reject(new Error('not_configured')); return; }
+    const s1 = document.createElement('script');
+    s1.src = 'https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js';
+    s1.onload = () => {
+      const s2 = document.createElement('script');
+      s2.src = 'https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js';
+      s2.onload = () => {
+        try {
+          firebase.initializeApp(firebaseConfig);
+          db = firebase.firestore();
+          resolve();
+        } catch(e) { reject(e); }
+      };
+      s2.onerror = reject;
+      document.head.appendChild(s2);
+    };
+    s1.onerror = reject;
+    document.head.appendChild(s1);
+  });
+}
+
+// ── Auth
+function doLogin() {
+  if (document.getElementById('pwdInput').value !== CONFIG.password) {
+    const inp = document.getElementById('pwdInput');
+    inp.classList.add('shake');
+    setTimeout(()=>inp.classList.remove('shake'), 400);
+    document.getElementById('loginErr').textContent = '❌ Mot de passe incorrect';
+    inp.value = ''; return;
+  }
+  sessionStorage.setItem('mauth','1');
+  document.getElementById('loginScreen').style.display = 'none';
+  startApp();
+}
+
+function doLogout() { sessionStorage.removeItem('mauth'); location.reload(); }
+
+async function startApp() {
+  try {
+    await loadFirebase();
+    document.getElementById('appScreen').style.display = 'block';
+    initApp();
+  } catch(e) {
+    document.getElementById('setupBanner').style.display = 'block';
+  }
+}
+
+if (sessionStorage.getItem('mauth') === '1') {
+  document.getElementById('loginScreen').style.display = 'none';
+  startApp();
+}
+
+// ── State
+let reunions = [], selectedR = null, presences = [], presenceUnsub = null;
+
+function initApp() {
+  document.getElementById('newDate').valueAsDate = new Date();
+  loadReunions();
+}
+
+function switchTab(name) {
+  ['reunions','presences'].forEach(n => {
+    document.getElementById('tab-'+n).classList.toggle('active', n===name);
+    document.getElementById('tabBtn-'+n).classList.toggle('active', n===name);
+  });
+  if (name==='presences') fillRSelect();
+}
+
+function goToPresences() {
+  switchTab('presences');
+  setTimeout(()=>{ if(selectedR){document.getElementById('rSelect').value=selectedR.id; loadPresences();} }, 50);
+}
+
+// ── QR — génération via API publique (image)
+function buildScanUrl(id) {
+  return `${CONFIG.baseUrl}/${CONFIG.scanFile}?reunion=${id}`;
+}
+function buildQrImageUrl(data) {
+  return `https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(data)}&size=220x220&color=0f2557&margin=10`;
+}
+
+// ── Réunions
+async function loadReunions() {
+  try {
+    const snap = await db.collection('maphar_reunions').orderBy('date','desc').get();
+    reunions = snap.docs.map(d=>({id:d.id,...d.data()}));
+    renderRList();
+  } catch(e) { toast('Erreur de chargement','err'); }
+}
+
+function renderRList() {
+  const el = document.getElementById('rList');
+  if (!reunions.length) {
+    el.innerHTML=`<div class="empty-tbl"><div class="e-icon">📅</div><div class="e-title">Aucune réunion</div><div class="e-sub">Créez votre première réunion ci-dessus</div></div>`;
+    return;
+  }
+  el.innerHTML = reunions.map(r=>{
+    const ds = r.date ? new Date(r.date+'T00:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'}) : '';
+    const sel = selectedR?.id===r.id ? 'sel' : '';
+    return `<div class="r-item ${sel}" onclick="selectR('${r.id}')">
+      <div class="r-dot"></div>
+      <div class="r-info"><div class="r-label">${esc(r.label)}</div><div class="r-date">📅 ${ds}</div></div>
+      <span class="r-count" id="rc-${r.id}">…</span>
+      <span class="r-del" onclick="event.stopPropagation();delR('${r.id}')">🗑️</span>
+    </div>`;
+  }).join('');
+  reunions.forEach(r=>getCount(r.id));
+}
+
+async function getCount(id) {
+  const snap = await db.collection('maphar_presences').where('reunionId','==',id).get();
+  const el = document.getElementById('rc-'+id);
+  if (el) el.textContent = snap.size+' présent'+(snap.size>1?'s':'');
+}
+
+async function createReunion() {
+  const label = document.getElementById('newLabel').value.trim();
+  const date  = document.getElementById('newDate').value;
+  if (!label||!date) { toast('Renseignez l\'intitulé et la date','err'); return; }
+  try {
+    const ref = await db.collection('maphar_reunions').add({
+      label, date, createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    document.getElementById('newLabel').value='';
+    toast('Réunion créée ✅','ok');
+    await loadReunions();
+    selectR(ref.id);
+  } catch(e) { toast('Erreur de création','err'); }
+}
+
+function selectR(id) {
+  selectedR = reunions.find(r=>r.id===id);
+  renderRList();
+  renderQR();
+}
+
+function renderQR() {
+  if (!selectedR) return;
+  const url = buildScanUrl(selectedR.id);
+  document.getElementById('qrEmpty').style.display='none';
+  document.getElementById('qrReady').style.display='block';
+  document.getElementById('qrName').textContent = selectedR.label||'Réunion MAPHAR';
+  document.getElementById('qrUrl').textContent  = url;
+  document.getElementById('qrImg').src = buildQrImageUrl(url);
+  const ds = selectedR.date
+    ? new Date(selectedR.date+'T00:00:00').toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'})
+    : '';
+  document.getElementById('qrDate').textContent = ds;
+}
+
+async function delR(id) {
+  if (!confirm('Supprimer cette réunion ?')) return;
+  await db.collection('maphar_reunions').doc(id).delete();
+  if (selectedR?.id===id) {
+    selectedR=null;
+    document.getElementById('qrEmpty').style.display='block';
+    document.getElementById('qrReady').style.display='none';
+  }
+  await loadReunions();
+  toast('Réunion supprimée','ok');
+}
+
+// ── Présences
+function fillRSelect() {
+  const sel = document.getElementById('rSelect');
+  sel.innerHTML='<option value="">— Choisir une réunion —</option>';
+  reunions.forEach(r=>{
+    const ds=r.date?new Date(r.date+'T00:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'}):'';
+    sel.innerHTML+=`<option value="${r.id}">${esc(r.label)} – ${ds}</option>`;
+  });
+  if (selectedR) sel.value=selectedR.id;
+}
+
+async function loadPresences() {
+  const rid = document.getElementById('rSelect').value;
+  if (!rid) { presences=[]; renderPresences(); return; }
+  if (presenceUnsub) presenceUnsub();
+  presenceUnsub = db.collection('maphar_presences')
+    .where('reunionId','==',rid)
+    .orderBy('timestamp','asc')
+    .onSnapshot(snap=>{
+      presences=snap.docs.map(d=>({id:d.id,...d.data()}));
+      renderPresences();
+    });
+}
+
+function renderPresences(filter='') {
+  const tbody=document.getElementById('tBody');
+  const f=filter.toLowerCase();
+  const list=presences.filter(p=>!f||(p.prenom+' '+p.nom+' '+p.fonction+' '+p.telephone+' '+(p.email||'')).toLowerCase().includes(f));
+  const cnt=list.length;
+  document.getElementById('cntPill').textContent=cnt+' présent'+(cnt>1?'s':'');
+  if (!list.length) {
+    tbody.innerHTML=`<tr><td colspan="8"><div class="empty-tbl">
+      <div class="e-icon">👥</div>
+      <div class="e-title">${presences.length?'Aucun résultat':'Aucune présence enregistrée'}</div>
+      <div class="e-sub">${presences.length?'Affinez votre recherche':'Les membres scannent le QR pour apparaître ici'}</div>
+    </div></td></tr>`;
+    return;
+  }
+  tbody.innerHTML=list.map((p,i)=>{
+    const h=p.dateSignature?new Date(p.dateSignature).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}):'–';
+    return `<tr>
+      <td style="color:var(--grey);font-weight:600">${i+1}</td>
+      <td>${esc(p.prenom)}</td><td><strong>${esc(p.nom)}</strong></td>
+      <td>${esc(p.fonction)}</td><td>${esc(p.telephone)}</td>
+      <td style="color:var(--grey)">${esc(p.email||'–')}</td>
+      <td style="color:var(--grey)">${h}</td>
+      <td class="no-print"><div class="td-actions">
+        <button class="btn btn-outline btn-xs" onclick="openEdit('${p.id}')">✏️</button>
+        <button class="btn btn-red btn-xs" onclick="delP('${p.id}')">🗑️</button>
+      </div></td>
+    </tr>`;
+  }).join('');
+}
+
+function filterTbl() { renderPresences(document.getElementById('srch').value); }
+
+function openEdit(id) {
+  const p=presences.find(x=>x.id===id); if(!p)return;
+  document.getElementById('eId').value=id;
+  ['prenom','nom','fonction','telephone','email'].forEach(k=>document.getElementById('e-'+k).value=p[k]||'');
+  document.getElementById('editBg').classList.add('show');
+}
+function closeModal() { document.getElementById('editBg').classList.remove('show'); }
+
+async function saveEdit() {
+  const id=document.getElementById('eId').value;
+  const d={prenom:document.getElementById('e-prenom').value.trim(),nom:document.getElementById('e-nom').value.trim(),
+    fonction:document.getElementById('e-fonction').value.trim(),telephone:document.getElementById('e-telephone').value.trim(),
+    email:document.getElementById('e-email').value.trim(),modifiedAt:new Date().toISOString()};
+  if (!d.prenom||!d.nom||!d.fonction||!d.telephone){toast('Champs obligatoires manquants','err');return;}
+  try { await db.collection('maphar_presences').doc(id).update(d); closeModal(); toast('Mise à jour ✅','ok'); }
+  catch(e){toast('Erreur','err');}
+}
+
+async function delP(id) {
+  if (!confirm('Supprimer cette présence ?')) return;
+  try { await db.collection('maphar_presences').doc(id).delete(); toast('Supprimé','ok'); }
+  catch(e){toast('Erreur','err');}
+}
+
+function exportCSV() {
+  if (!presences.length){toast('Aucune donnée à exporter','err');return;}
+  const rid=document.getElementById('rSelect').value;
+  const reunion=reunions.find(r=>r.id===rid);
+  const headers=['#','Prénom','Nom','Fonction','Téléphone','Email','Heure'];
+  const rows=presences.map((p,i)=>{
+    const h=p.dateSignature?new Date(p.dateSignature).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}):'';
+    return [i+1,p.prenom,p.nom,p.fonction,p.telephone,p.email||'',h];
+  });
+  const csv=[headers,...rows].map(r=>r.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(';')).join('\n');
+  const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8;'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=`Presences_MAPHAR_${reunion?.date||'export'}.csv`;
+  a.click(); toast('Export CSV ✅','ok');
+}
+
+function printQR() {
+  if (!selectedR) return;
+  const url  = buildScanUrl(selectedR.id);
+  const qrUrl= buildQrImageUrl(url);
+  const ds   = selectedR.date?new Date(selectedR.date+'T00:00:00').toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'}):'';
+  const w=window.open('','_blank');
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
+  <title>QR – ${esc(selectedR.label)}</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;700;900&display=swap');
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Outfit',Arial,sans-serif;background:#fff;display:flex;align-items:center;justify-content:center;min-height:100vh}
+    .card{border:3px solid #0f2557;border-radius:20px;padding:40px;text-align:center;max-width:420px;width:100%}
+    .org{font-size:28px;font-weight:900;color:#0f2557;letter-spacing:2px}
+    .org-sub{font-size:12px;color:#666;margin:4px 0 28px}
+    .qr{width:220px;height:220px;display:block;margin:0 auto}
+    .m-name{font-size:18px;font-weight:700;color:#0f2557;margin-top:24px}
+    .m-date{font-size:14px;color:#555;margin-top:6px;text-transform:capitalize}
+    .instr{margin-top:20px;background:#eef2ff;border-radius:12px;padding:14px;font-size:14px;color:#3730a3;font-weight:600}
+    @media print{@page{margin:15mm}}
+  </style></head><body>
+  <div class="card">
+    <div class="org">${CONFIG.orgName}</div>
+    <div class="org-sub">${CONFIG.orgFullName}</div>
+    <img class="qr" src="${qrUrl}" alt="QR Code" onload="window.print()">
+    <div class="m-name">${esc(selectedR.label)}</div>
+    <div class="m-date">📅 ${ds}</div>
+    <div class="instr">📱 Scannez avec votre téléphone<br>pour enregistrer votre présence</div>
+  </div>
+  </body></html>`);
+  w.document.close();
+}
+
+function printPresences() {
+  const rid=document.getElementById('rSelect').value;
+  if (!rid||!presences.length){toast('Aucune présence à imprimer','err');return;}
+  const reunion=reunions.find(r=>r.id===rid);
+  const ds=reunion?.date?new Date(reunion.date+'T00:00:00').toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'}):'';
+  const rows=presences.map((p,i)=>{
+    const h=p.dateSignature?new Date(p.dateSignature).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}):'–';
+    return `<tr><td>${i+1}</td><td>${esc(p.prenom)}</td><td>${esc(p.nom)}</td><td>${esc(p.fonction)}</td><td>${esc(p.telephone)}</td><td>${esc(p.email||'–')}</td><td>${h}</td><td style="width:110px"></td></tr>`;
+  }).join('');
+  const w=window.open('','_blank');
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
+  <title>Présences – ${esc(reunion?.label)}</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;900&display=swap');
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:'Outfit',Arial,sans-serif;padding:30px;color:#000}
+    .org{font-size:20px;font-weight:900;color:#0f2557;text-align:center}
+    .org-sub{font-size:12px;color:#555;text-align:center;margin-bottom:4px}
+    .meta{text-align:center;font-size:13px;color:#333;margin-bottom:24px;text-transform:capitalize;padding-bottom:12px;border-bottom:2px solid #0f2557}
+    table{width:100%;border-collapse:collapse;font-size:12px}
+    th{background:#0f2557;color:#fff;padding:9px 11px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.5px}
+    td{padding:10px 11px;border-bottom:1px solid #e5e7eb}
+    tr:nth-child(even) td{background:#f8fafc}
+    .foot{margin-top:30px;display:flex;justify-content:space-between;font-size:12px;color:#555}
+    .sigs{margin-top:50px;display:flex;justify-content:space-between}
+    .sig{text-align:center}.sig-line{border-top:1px solid #000;width:170px;margin:0 auto;padding-top:6px;font-size:12px}
+    @media print{@page{margin:15mm}}
+  </style></head><body>
+  <div class="org">${CONFIG.orgName} – Bureau Exécutif</div>
+  <div class="org-sub">${CONFIG.orgFullName}</div>
+  <div class="meta">📅 ${ds} &nbsp;|&nbsp; ${esc(reunion?.label)}</div>
+  <table><thead><tr><th>#</th><th>Prénom</th><th>Nom</th><th>Fonction</th><th>Téléphone</th><th>Email</th><th>Heure</th><th>Signature</th></tr></thead>
+  <tbody>${rows}</tbody></table>
+  <div class="foot"><span>Total : <strong>${presences.length} présent(s)</strong></span><span>Édité le ${new Date().toLocaleDateString('fr-FR')}</span></div>
+  <div class="sigs"><div class="sig"><div class="sig-line">Le Président</div></div><div class="sig"><div class="sig-line">Le Secrétaire Général</div></div></div>
+  <script>window.onload=()=>window.print()<\/script>
+  </body></html>`);
+  w.document.close();
+}
+
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+function toast(msg,type=''){
+  const el=document.getElementById('toast');
+  el.textContent=msg; el.className='toast'+(type?' '+type:'')+' show';
+  setTimeout(()=>el.classList.remove('show'),3000);
+}
+document.getElementById('editBg').addEventListener('click',e=>{if(e.target===e.currentTarget)closeModal();});
+</script>
+</body>
+</html>
