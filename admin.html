@@ -280,13 +280,14 @@ service cloud.firestore {
         <div class="tbl-actions no-print">
           <input class="search-input" id="srch" placeholder="🔍 Rechercher…" oninput="filterTbl()">
           <span class="count-pill" id="cntPill">0 présent</span>
+          <span id="liveIndicator" style="font-size:12px;font-weight:600;color:var(--grey)">⏳ Chargement…</span>
           <button class="btn btn-green" onclick="exportCSV()">📊 CSV</button>
           <button class="btn btn-outline" onclick="printPresences()">🖨️ Imprimer</button>
         </div>
         <div class="table-wrap">
           <table>
             <thead>
-              <tr><th>#</th><th>Prénom</th><th>Nom</th><th>Fonction</th><th>Téléphone</th><th>Email</th><th>Heure</th><th class="no-print">Actions</th></tr>
+              <tr><th>#</th><th>Prénom</th><th>Nom</th><th>Fonction</th><th>Téléphone</th><th>Email</th><th>Heure</th><th>Signature</th><th class="no-print">Actions</th></tr>
             </thead>
             <tbody id="tBody">
               <tr><td colspan="8"><div class="empty-tbl"><div class="e-icon">👥</div><div class="e-title">Sélectionnez une réunion</div></div></td></tr>
@@ -402,7 +403,7 @@ if (sessionStorage.getItem('mauth') === '1') {
 }
 
 // ── State
-let reunions = [], selectedR = null, presences = [], presenceUnsub = null;
+let reunions = [], selectedR = null, presences = [], presenceUnsub = null, autoRefreshTimer = null;
 
 function initApp() {
   document.getElementById('newDate').valueAsDate = new Date();
@@ -414,7 +415,11 @@ function switchTab(name) {
     document.getElementById('tab-'+n).classList.toggle('active', n===name);
     document.getElementById('tabBtn-'+n).classList.toggle('active', n===name);
   });
-  if (name==='presences') fillRSelect();
+  if (name==='presences') { fillRSelect(); }
+  if (name==='reunions') {
+    if (presenceUnsub) { presenceUnsub(); presenceUnsub=null; }
+    if (autoRefreshTimer) { clearInterval(autoRefreshTimer); autoRefreshTimer=null; }
+  }
 }
 
 function goToPresences() {
@@ -525,14 +530,46 @@ function fillRSelect() {
 async function loadPresences() {
   const rid = document.getElementById('rSelect').value;
   if (!rid) { presences=[]; renderPresences(); return; }
-  if (presenceUnsub) presenceUnsub();
-  presenceUnsub = db.collection('maphar_presences')
-    .where('reunionId','==',rid)
-    .onSnapshot(snap=>{
-      presences=snap.docs.map(d=>({id:d.id,...d.data()}));
-      presences.sort((a,b)=>(a.dateSignature||"").localeCompare(b.dateSignature||""));
+
+  // Arrêt ancien listener et timer
+  if (presenceUnsub) { presenceUnsub(); presenceUnsub = null; }
+  if (autoRefreshTimer) { clearInterval(autoRefreshTimer); autoRefreshTimer = null; }
+
+  // Fonction de chargement direct
+  async function fetchNow() {
+    try {
+      const snap = await db.collection('maphar_presences').where('reunionId','==',rid).get();
+      presences = snap.docs.map(d=>({id:d.id,...d.data()}));
+      presences.sort((a,b)=>(a.dateSignature||'').localeCompare(b.dateSignature||''));
       renderPresences();
-    });
+      updateLiveIndicator(true);
+    } catch(e) { updateLiveIndicator(false); }
+  }
+
+  // Chargement immédiat
+  await fetchNow();
+
+  // Listener temps réel Firebase
+  try {
+    presenceUnsub = db.collection('maphar_presences')
+      .where('reunionId','==',rid)
+      .onSnapshot(snap=>{
+        presences=snap.docs.map(d=>({id:d.id,...d.data()}));
+        presences.sort((a,b)=>(a.dateSignature||'').localeCompare(b.dateSignature||''));
+        renderPresences();
+        updateLiveIndicator(true);
+      }, err=>{ updateLiveIndicator(false); });
+  } catch(e) {}
+
+  // Rafraîchissement automatique toutes les 15s (filet de sécurité)
+  autoRefreshTimer = setInterval(fetchNow, 15000);
+}
+
+function updateLiveIndicator(online) {
+  const el = document.getElementById('liveIndicator');
+  if (!el) return;
+  el.textContent = online ? '🟢 Temps réel actif' : '🔴 Hors ligne';
+  el.style.color  = online ? 'var(--green)' : 'var(--red)';
 }
 
 function renderPresences(filter='') {
@@ -551,12 +588,16 @@ function renderPresences(filter='') {
   }
   tbody.innerHTML=list.map((p,i)=>{
     const h=p.dateSignature?new Date(p.dateSignature).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}):'–';
+    const sigHtml = p.signature
+      ? `<img src="${p.signature}" style="height:38px;max-width:100px;border:1px solid #e2e8f0;border-radius:6px;background:#fff">`
+      : '<span style="color:#cbd5e1;font-size:11px">—</span>';
     return `<tr>
       <td style="color:var(--grey);font-weight:600">${i+1}</td>
       <td>${esc(p.prenom)}</td><td><strong>${esc(p.nom)}</strong></td>
       <td>${esc(p.fonction)}</td><td>${esc(p.telephone)}</td>
       <td style="color:var(--grey)">${esc(p.email||'–')}</td>
       <td style="color:var(--grey)">${h}</td>
+      <td>${sigHtml}</td>
       <td class="no-print"><div class="td-actions">
         <button class="btn btn-outline btn-xs" onclick="openEdit('${p.id}')">✏️</button>
         <button class="btn btn-red btn-xs" onclick="delP('${p.id}')">🗑️</button>
@@ -648,7 +689,8 @@ function printPresences() {
   const ds=reunion?.date?new Date(reunion.date+'T00:00:00').toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'}):'';
   const rows=presences.map((p,i)=>{
     const h=p.dateSignature?new Date(p.dateSignature).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}):'–';
-    return `<tr><td>${i+1}</td><td>${esc(p.prenom)}</td><td>${esc(p.nom)}</td><td>${esc(p.fonction)}</td><td>${esc(p.telephone)}</td><td>${esc(p.email||'–')}</td><td>${h}</td><td style="width:110px"></td></tr>`;
+    const sigCell=p.signature?`<img src="${p.signature}" style="height:36px;max-width:90px">`:'&nbsp;';
+    return `<tr><td>${i+1}</td><td>${esc(p.prenom)}</td><td>${esc(p.nom)}</td><td>${esc(p.fonction)}</td><td>${esc(p.telephone)}</td><td>${esc(p.email||'–')}</td><td>${h}</td><td style="width:110px">${sigCell}</td></tr>`;
   }).join('');
   const w=window.open('','_blank');
   w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
@@ -656,23 +698,37 @@ function printPresences() {
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;900&display=swap');
     *{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:'Outfit',Arial,sans-serif;padding:30px;color:#000}
-    .org{font-size:20px;font-weight:900;color:#0f2557;text-align:center}
-    .org-sub{font-size:12px;color:#555;text-align:center;margin-bottom:4px}
-    .meta{text-align:center;font-size:13px;color:#333;margin-bottom:24px;text-transform:capitalize;padding-bottom:12px;border-bottom:2px solid #0f2557}
-    table{width:100%;border-collapse:collapse;font-size:12px}
-    th{background:#0f2557;color:#fff;padding:9px 11px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.5px}
-    td{padding:10px 11px;border-bottom:1px solid #e5e7eb}
+    @page{size:A4 landscape;margin:10mm 12mm}
+    body{font-family:'Outfit',Arial,sans-serif;padding:16px;color:#000;font-size:11px}
+    .org{font-size:17px;font-weight:900;color:#0f2557;text-align:center;letter-spacing:1px}
+    .org-sub{font-size:10px;color:#555;text-align:center;margin-bottom:3px}
+    .meta{text-align:center;font-size:11px;color:#333;margin-bottom:14px;text-transform:capitalize;padding-bottom:10px;border-bottom:2px solid #0f2557}
+    table{width:100%;border-collapse:collapse;font-size:10px;table-layout:fixed}
+    col.c-num{width:4%}
+    col.c-prenom{width:11%}
+    col.c-nom{width:12%}
+    col.c-fonction{width:14%}
+    col.c-tel{width:11%}
+    col.c-email{width:14%}
+    col.c-heure{width:7%}
+    col.c-sig{width:27%}
+    th{background:#0f2557;color:#fff;padding:7px 6px;text-align:left;font-size:9px;text-transform:uppercase;letter-spacing:.4px;white-space:nowrap;overflow:hidden}
+    td{padding:6px 6px;border-bottom:1px solid #e5e7eb;vertical-align:middle;overflow:hidden;word-break:break-word}
     tr:nth-child(even) td{background:#f8fafc}
-    .foot{margin-top:30px;display:flex;justify-content:space-between;font-size:12px;color:#555}
-    .sigs{margin-top:50px;display:flex;justify-content:space-between}
-    .sig{text-align:center}.sig-line{border-top:1px solid #000;width:170px;margin:0 auto;padding-top:6px;font-size:12px}
-    @media print{@page{margin:15mm}}
+    td img{max-height:42px;max-width:100%;display:block}
+    .foot{margin-top:16px;display:flex;justify-content:space-between;font-size:10px;color:#555}
+    .sigs{margin-top:30px;display:flex;justify-content:space-between}
+    .sig{text-align:center}.sig-line{border-top:1px solid #000;width:150px;margin:0 auto;padding-top:5px;font-size:10px}
   </style></head><body>
   <div class="org">${CONFIG.orgName} – Bureau Exécutif</div>
   <div class="org-sub">${CONFIG.orgFullName}</div>
   <div class="meta">📅 ${ds} &nbsp;|&nbsp; ${esc(reunion?.label)}</div>
-  <table><thead><tr><th>#</th><th>Prénom</th><th>Nom</th><th>Fonction</th><th>Téléphone</th><th>Email</th><th>Heure</th><th>Signature</th></tr></thead>
+  <table>
+    <colgroup>
+      <col class="c-num"><col class="c-prenom"><col class="c-nom"><col class="c-fonction">
+      <col class="c-tel"><col class="c-email"><col class="c-heure"><col class="c-sig">
+    </colgroup>
+    <thead><tr><th>#</th><th>Prénom</th><th>Nom</th><th>Fonction</th><th>Téléphone</th><th>Email</th><th>Heure</th><th>Signature</th></tr></thead>
   <tbody>${rows}</tbody></table>
   <div class="foot"><span>Total : <strong>${presences.length} présent(s)</strong></span><span>Édité le ${new Date().toLocaleDateString('fr-FR')}</span></div>
   <div class="sigs"><div class="sig"><div class="sig-line">Le Président</div></div><div class="sig"><div class="sig-line">Le Secrétaire Général</div></div></div>

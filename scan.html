@@ -111,6 +111,21 @@
         <label>Email</label>
         <input type="email" id="f-email" placeholder="votre@email.com" autocomplete="email">
       </div>
+
+      <div class="field">
+        <label>Signature <span class="req">*</span></label>
+        <div style="position:relative;border:1.5px solid var(--border);border-radius:12px;background:#fafbff;overflow:hidden" id="sigBox">
+          <canvas id="sigCanvas" style="display:block;width:100%;touch-action:none;cursor:crosshair"></canvas>
+          <div id="sigPlaceholder" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;color:#94a3b8;font-size:13px;font-weight:500">
+            ✍️ Signez ici avec votre doigt
+          </div>
+          <button type="button" onclick="clearSig()" style="position:absolute;top:8px;right:8px;background:rgba(255,255,255,0.9);border:1px solid var(--border);border-radius:8px;padding:4px 10px;font-size:11px;font-weight:700;color:var(--grey);cursor:pointer">
+            🗑️ Effacer
+          </button>
+        </div>
+        <div class="hint" id="h-sig">Veuillez apposer votre signature</div>
+      </div>
+
       <button class="btn-submit" id="btnSubmit" onclick="handleSubmit()">✅ Confirmer ma présence</button>
     </div>
   </div>
@@ -120,7 +135,15 @@
     <div class="state-body">
       <span class="state-icon">✅</span>
       <div class="state-title" style="color:#065f46">Présence confirmée !</div>
-      <div class="state-sub">Merci <span class="success-name" id="s-fullname"></span><br>Votre présence a bien été enregistrée.</div>
+      <div class="state-sub">
+        Merci <span class="success-name" id="s-fullname"></span><br>
+        Votre présence a bien été enregistrée.
+      </div>
+      <div style="margin-top:28px;background:#f0fdf4;border:1.5px solid #86efac;border-radius:14px;padding:16px 20px;text-align:center">
+        <div style="font-size:28px;margin-bottom:8px">📱</div>
+        <div style="font-size:14px;font-weight:700;color:#14532d">Vous pouvez fermer cette page</div>
+        <div style="font-size:12px;color:#166534;margin-top:4px">Rejoignez la réunion — bonne séance !</div>
+      </div>
     </div>
   </div>
 
@@ -197,10 +220,70 @@ async function init() {
       document.getElementById('alreadyWarn').style.display='block';
     }
     show('formView');
+    setTimeout(initSig, 100);
   } catch(e) {
     console.error(e);
     show('errorView');
   }
+}
+
+// ── Signature pad
+let sigCanvas, sigCtx, isSigning = false, hasSig = false;
+
+function initSig() {
+  sigCanvas = document.getElementById('sigCanvas');
+  // Set canvas resolution to match display size
+  const rect = sigCanvas.parentElement.getBoundingClientRect();
+  const w = rect.width || 320;
+  sigCanvas.width  = w * window.devicePixelRatio;
+  sigCanvas.height = 130 * window.devicePixelRatio;
+  sigCanvas.style.height = '130px';
+  sigCtx = sigCanvas.getContext('2d');
+  sigCtx.scale(window.devicePixelRatio, window.devicePixelRatio);
+  sigCtx.strokeStyle = '#0f2557';
+  sigCtx.lineWidth   = 2.5;
+  sigCtx.lineCap     = 'round';
+  sigCtx.lineJoin    = 'round';
+
+  function pos(e) {
+    const r = sigCanvas.getBoundingClientRect();
+    const src = e.touches ? e.touches[0] : e;
+    return { x: src.clientX - r.left, y: src.clientY - r.top };
+  }
+
+  sigCanvas.addEventListener('pointerdown', e => {
+    isSigning = true; hasSig = true;
+    sigCtx.beginPath();
+    const p = pos(e);
+    sigCtx.moveTo(p.x, p.y);
+    document.getElementById('sigPlaceholder').style.display = 'none';
+    document.getElementById('sigBox').style.borderColor = '#2156d4';
+    document.getElementById('h-sig').classList.remove('show');
+    e.preventDefault();
+  });
+  sigCanvas.addEventListener('pointermove', e => {
+    if (!isSigning) return;
+    const p = pos(e);
+    sigCtx.lineTo(p.x, p.y);
+    sigCtx.stroke();
+    sigCtx.beginPath();
+    sigCtx.moveTo(p.x, p.y);
+    e.preventDefault();
+  });
+  ['pointerup','pointercancel'].forEach(ev =>
+    sigCanvas.addEventListener(ev, () => { isSigning = false; })
+  );
+}
+
+function clearSig() {
+  sigCtx.clearRect(0, 0, sigCanvas.width, sigCanvas.height);
+  hasSig = false;
+  document.getElementById('sigPlaceholder').style.display = 'flex';
+  document.getElementById('sigBox').style.borderColor = 'var(--border)';
+}
+
+function getSigDataUrl() {
+  return sigCanvas.toDataURL('image/png');
 }
 
 function validate(id, hintId) {
@@ -212,13 +295,20 @@ function validate(id, hintId) {
 }
 
 async function handleSubmit() {
-  const ok = [
+  const fieldsOk = [
     validate('f-prenom','h-prenom'),
     validate('f-nom','h-nom'),
     validate('f-fonction','h-fonction'),
     validate('f-telephone','h-telephone'),
   ].every(Boolean);
-  if (!ok) return;
+
+  // Validate signature
+  if (!hasSig) {
+    document.getElementById('h-sig').classList.add('show');
+    document.getElementById('sigBox').style.borderColor = 'var(--red)';
+  }
+
+  if (!fieldsOk || !hasSig) return;
 
   const btn = document.getElementById('btnSubmit');
   btn.disabled = true;
@@ -229,10 +319,11 @@ async function handleSubmit() {
   const fonction  = document.getElementById('f-fonction').value.trim();
   const telephone = document.getElementById('f-telephone').value.trim();
   const email     = document.getElementById('f-email').value.trim();
+  const signature = getSigDataUrl();
 
   try {
     await db.collection('maphar_presences').add({
-      reunionId, prenom, nom, fonction, telephone, email,
+      reunionId, prenom, nom, fonction, telephone, email, signature,
       dateSignature: new Date().toISOString(),
       timestamp: firebase.firestore.FieldValue.serverTimestamp()
     });
