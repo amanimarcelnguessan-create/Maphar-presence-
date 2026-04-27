@@ -303,6 +303,35 @@ service cloud.firestore {
       </div>
     </div>
 
+    <!-- TAB HISTORIQUE -->
+    <div id="tab-historique" class="panel">
+      <div class="card">
+        <div class="card-title">🗂️ Historique des réunions</div>
+        <div class="no-print" style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:20px;align-items:flex-end">
+          <div class="f-group" style="margin:0;min-width:130px">
+            <label>Mois</label>
+            <select id="hMois" onchange="filterHistorique()">
+              <option value="">Tous</option>
+              <option value="01">Janvier</option><option value="02">Février</option>
+              <option value="03">Mars</option><option value="04">Avril</option>
+              <option value="05">Mai</option><option value="06">Juin</option>
+              <option value="07">Juillet</option><option value="08">Août</option>
+              <option value="09">Septembre</option><option value="10">Octobre</option>
+              <option value="11">Novembre</option><option value="12">Décembre</option>
+            </select>
+          </div>
+          <div class="f-group" style="margin:0;min-width:110px">
+            <label>Année</label>
+            <select id="hAnnee" onchange="filterHistorique()"><option value="">Toutes</option></select>
+          </div>
+          <span class="count-pill" id="hCount">0 réunion</span>
+        </div>
+        <div id="histoList">
+          <div class="empty-tbl"><div class="e-icon">🗂️</div><div class="e-title">Aucune réunion</div></div>
+        </div>
+      </div>
+    </div><!-- /tab-historique -->
+
   </div>
 </div><!-- /appScreen -->
 
@@ -334,7 +363,7 @@ service cloud.firestore {
 const CONFIG = {
   password:    "MAPHAR2026",
   baseUrl:     "https://amanimarcelnguessan-create.github.io/Maphar-presence-",
-  scanFile:    "scan.html",
+  scanFile:    "scanner.html",
   orgName:     "MAPHAR",
   orgFullName: "Mutuelle pour l'Assurance des Pharmaciens"
 };
