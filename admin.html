@@ -129,6 +129,11 @@
     .toast.show{opacity:1;transform:translateY(0)}
     .toast.ok{background:var(--green)}.toast.err{background:var(--red)}
     .divider{height:1px;background:var(--border);margin:16px 0}
+    .histo-item{border:1.5px solid var(--border);border-radius:14px;margin-bottom:10px;overflow:hidden;transition:border-color .2s}
+    .histo-item:hover{border-color:#bfdbfe}
+    .histo-head{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;cursor:pointer;background:#fafbff;transition:background .15s}
+    .histo-head:hover{background:#f0f7ff}
+    .histo-body{padding:16px;border-top:1px solid var(--border);background:#fff}
     @media print{.no-print{display:none!important}}
   </style>
 </head>
@@ -208,6 +213,7 @@ service cloud.firestore {
   <nav class="tabs no-print">
     <button class="tab active" id="tabBtn-reunions" onclick="switchTab('reunions')">📅 Réunions &amp; QR</button>
     <button class="tab" id="tabBtn-presences" onclick="switchTab('presences')">👥 Présences</button>
+    <button class="tab" id="tabBtn-historique" onclick="switchTab('historique')">🗂️ Historique</button>
   </nav>
 
   <div class="content">
@@ -411,11 +417,12 @@ function initApp() {
 }
 
 function switchTab(name) {
-  ['reunions','presences'].forEach(n => {
+  ['reunions','presences','historique'].forEach(n => {
     document.getElementById('tab-'+n).classList.toggle('active', n===name);
     document.getElementById('tabBtn-'+n).classList.toggle('active', n===name);
   });
   if (name==='presences') { fillRSelect(); }
+  if (name==='historique') { buildHistorique(); }
   if (name==='reunions') {
     if (presenceUnsub) { presenceUnsub(); presenceUnsub=null; }
     if (autoRefreshTimer) { clearInterval(autoRefreshTimer); autoRefreshTimer=null; }
@@ -450,8 +457,14 @@ function renderRList() {
     el.innerHTML=`<div class="empty-tbl"><div class="e-icon">📅</div><div class="e-title">Aucune réunion</div><div class="e-sub">Créez votre première réunion ci-dessus</div></div>`;
     return;
   }
-  el.innerHTML = reunions.map(r=>{
-    const ds = r.date ? new Date(r.date+'T00:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'}) : '';
+  const today    = new Date(); today.setHours(0,0,0,0);
+  const limitOld = new Date(today); limitOld.setDate(limitOld.getDate() - 30);
+
+  const recent  = reunions.filter(r => r.date && new Date(r.date+'T00:00:00') >= limitOld);
+  const ancient = reunions.filter(r => !r.date || new Date(r.date+'T00:00:00') < limitOld);
+
+  function renderItem(r) {
+    const ds  = r.date ? new Date(r.date+'T00:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'}) : '';
     const sel = selectedR?.id===r.id ? 'sel' : '';
     return `<div class="r-item ${sel}" onclick="selectR('${r.id}')">
       <div class="r-dot"></div>
@@ -459,7 +472,23 @@ function renderRList() {
       <span class="r-count" id="rc-${r.id}">…</span>
       <span class="r-del" onclick="event.stopPropagation();delR('${r.id}')">🗑️</span>
     </div>`;
-  }).join('');
+  }
+
+  function sectionLabel(text, color) {
+    return `<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:${color};margin:12px 0 6px;padding:0 4px">${text}</div>`;
+  }
+
+  let html = '';
+  if (recent.length) {
+    html += sectionLabel('🟢 Réunions récentes (30 derniers jours)', '#059669');
+    html += recent.map(renderItem).join('');
+  }
+  if (ancient.length) {
+    html += sectionLabel('🗂️ Anciennes réunions', '#94a3b8');
+    html += ancient.map(renderItem).join('');
+  }
+
+  el.innerHTML = html;
   reunions.forEach(r=>getCount(r.id));
 }
 
@@ -754,6 +783,214 @@ function printPresences() {
   <script>window.onload=()=>window.print()<\/script>
   </body></html>`);
   w.document.close();
+}
+
+// ══════════════════════════════════════
+// HISTORIQUE
+// ══════════════════════════════════════
+let histoPresences = {}; // cache: reunionId -> []
+
+async function buildHistorique() {
+  // Populate year filter
+  const years = [...new Set(reunions.map(r => r.date?.slice(0,4)).filter(Boolean))].sort((a,b)=>b-a);
+  const selAn = document.getElementById('hAnnee');
+  const prevY = selAn.value;
+  selAn.innerHTML = '<option value="">Toutes</option>' + years.map(y=>`<option value="${y}"${y===prevY?' selected':''}>${y}</option>`).join('');
+
+  filterHistorique();
+}
+
+async function filterHistorique() {
+  const mois  = document.getElementById('hMois').value;
+  const annee = document.getElementById('hAnnee').value;
+
+  let filtered = [...reunions];
+  if (annee) filtered = filtered.filter(r => r.date?.startsWith(annee));
+  if (mois)  filtered = filtered.filter(r => r.date?.slice(5,7) === mois);
+
+  // Sort by date desc
+  filtered.sort((a,b) => (b.date||'').localeCompare(a.date||''));
+
+  document.getElementById('hCount').textContent = filtered.length + ' réunion' + (filtered.length>1?'s':'');
+
+  const el = document.getElementById('histoList');
+  if (!filtered.length) {
+    el.innerHTML = `<div class="empty-tbl"><div class="e-icon">🗂️</div><div class="e-title">Aucune réunion pour cette période</div></div>`;
+    return;
+  }
+
+  // Build accordion items
+  el.innerHTML = filtered.map(r => {
+    const ds = r.date ? new Date(r.date+'T00:00:00').toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'}) : '';
+    return `<div class="histo-item" id="hi-${r.id}">
+      <div class="histo-head" onclick="toggleHisto('${r.id}')">
+        <div>
+          <div style="font-size:14px;font-weight:700;color:#0f172a">${esc(r.label)}</div>
+          <div style="font-size:12px;color:var(--grey);margin-top:2px;text-transform:capitalize">📅 ${ds}</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <span class="r-count" id="hc-${r.id}">…</span>
+          <span style="color:var(--grey);font-size:18px" id="hArrow-${r.id}">›</span>
+        </div>
+      </div>
+      <div class="histo-body" id="hb-${r.id}" style="display:none">
+        <div style="display:flex;gap:8px;margin-bottom:12px" class="no-print">
+          <button class="btn btn-outline btn-sm" onclick="printHisto('${r.id}')">🖨️ Imprimer</button>
+          <button class="btn btn-green btn-sm" onclick="exportHistoCSV('${r.id}')">📊 CSV</button>
+        </div>
+        <div id="ht-${r.id}">
+          <div style="text-align:center;padding:20px;color:#94a3b8">⏳ Chargement…</div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Load counts
+  filtered.forEach(r => getHistoCount(r.id));
+}
+
+async function getHistoCount(id) {
+  const snap = await db.collection('maphar_presences').where('reunionId','==',id).get();
+  const el = document.getElementById('hc-'+id);
+  if (el) el.textContent = snap.size + ' présent' + (snap.size>1?'s':'');
+}
+
+async function toggleHisto(id) {
+  const body  = document.getElementById('hb-'+id);
+  const arrow = document.getElementById('hArrow-'+id);
+  const isOpen = body.style.display === 'block';
+
+  if (isOpen) {
+    body.style.display = 'none';
+    arrow.textContent = '›';
+    return;
+  }
+
+  body.style.display = 'block';
+  arrow.textContent = '⌄';
+
+  // Load presences if not cached
+  if (!histoPresences[id]) {
+    const snap = await db.collection('maphar_presences').where('reunionId','==',id).get();
+    histoPresences[id] = snap.docs.map(d=>({id:d.id,...d.data()}));
+    histoPresences[id].sort((a,b)=>(a.dateSignature||'').localeCompare(b.dateSignature||''));
+  }
+
+  renderHistoTable(id);
+}
+
+function renderHistoTable(rid) {
+  const list = histoPresences[rid] || [];
+  const el   = document.getElementById('ht-'+rid);
+
+  if (!list.length) {
+    el.innerHTML = `<div style="text-align:center;padding:20px;color:#94a3b8;font-size:13px">Aucune présence enregistrée</div>`;
+    return;
+  }
+
+  const rows = list.map((p,i) => {
+    const h = p.dateSignature ? new Date(p.dateSignature).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}) : '–';
+    const sigHtml = p.signature
+      ? `<img src="${p.signature}" style="height:34px;max-width:90px;border:1px solid #e2e8f0;border-radius:4px;background:#fff">`
+      : '–';
+    return `<tr>
+      <td style="color:var(--grey);font-weight:600">${i+1}</td>
+      <td><strong>${esc((p.nom||'').toUpperCase())}</strong></td>
+      <td>${esc(p.prenom)}</td>
+      <td>${esc(p.fonction)}</td>
+      <td>${esc(p.telephone)}</td>
+      <td style="color:var(--grey)">${esc(p.email||'–')}</td>
+      <td style="color:var(--grey)">${h}</td>
+      <td>${sigHtml}</td>
+    </tr>`;
+  }).join('');
+
+  el.innerHTML = `
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th>#</th><th>NOM</th><th>Prénom</th><th>Fonction</th>
+          <th>Téléphone</th><th>Email</th><th>Heure</th><th>Signature</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+}
+
+function printHisto(rid) {
+  const reunion = reunions.find(r=>r.id===rid);
+  const list    = histoPresences[rid] || [];
+  if (!list.length) { toast('Aucune présence à imprimer','err'); return; }
+
+  const ds = reunion?.date
+    ? new Date(reunion.date+'T00:00:00').toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'})
+    : '';
+
+  const rows = list.map((p,i) => {
+    const h = p.dateSignature ? new Date(p.dateSignature).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}) : '–';
+    const sigCell = p.signature ? `<img src="${p.signature}" style="height:36px;max-width:90px">` : '&nbsp;';
+    return `<tr><td>${i+1}</td><td><strong>${esc((p.nom||'').toUpperCase())}</strong></td><td>${esc(p.prenom)}</td><td>${esc(p.fonction)}</td><td>${esc(p.telephone)}</td><td>${esc(p.email||'–')}</td><td>${h}</td><td style="width:110px">${sigCell}</td></tr>`;
+  }).join('');
+
+  const w = window.open('','_blank');
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
+  <title>Présences – ${esc(reunion?.label)}</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;900&display=swap');
+    *{box-sizing:border-box;margin:0;padding:0}
+    @page{size:A4 landscape;margin:10mm 12mm}
+    body{font-family:'Outfit',Arial,sans-serif;padding:16px;color:#000;font-size:11px}
+    .header{display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:6px}
+    .org{font-size:17px;font-weight:900;color:#0f2557}
+    .org-sub{font-size:10px;color:#555}
+    .meta{text-align:center;font-size:11px;color:#333;margin-bottom:14px;text-transform:capitalize;padding-bottom:10px;border-bottom:2px solid #0f2557}
+    table{width:100%;border-collapse:collapse;font-size:10px;table-layout:fixed}
+    th{background:#0f2557;color:#fff;padding:7px 6px;text-align:left;font-size:9px;text-transform:uppercase;letter-spacing:.4px}
+    td{padding:6px;border-bottom:1px solid #e5e7eb;vertical-align:middle;overflow:hidden;word-break:break-word}
+    tr:nth-child(even) td{background:#f8fafc}
+    td img{max-height:42px;max-width:100%;display:block}
+    .foot{margin-top:16px;display:flex;justify-content:space-between;font-size:10px;color:#555}
+    .sigs{margin-top:30px;display:flex;justify-content:space-between}
+    .sig-line{border-top:1px solid #000;width:150px;text-align:center;padding-top:5px;font-size:10px}
+  </style></head><body>
+  <div class="header">
+    <img src="${document.querySelector('img[style*="height:36px"][style*="border-radius:4px"]')?.src || ''}" style="height:56px;object-fit:contain">
+    <div><div class="org">MAPHAR – Bureau Exécutif</div><div class="org-sub">Mutuelle pour l'Assurance des Pharmaciens</div></div>
+  </div>
+  <div class="meta">📅 ${ds} &nbsp;|&nbsp; ${esc(reunion?.label)}</div>
+  <table>
+    <colgroup>
+      <col style="width:4%"><col style="width:13%"><col style="width:12%"><col style="width:14%">
+      <col style="width:11%"><col style="width:13%"><col style="width:7%"><col style="width:26%">
+    </colgroup>
+    <thead><tr><th>#</th><th>NOM</th><th>Prénom</th><th>Fonction</th><th>Téléphone</th><th>Email</th><th>Heure</th><th>Signature</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>
+  <div class="foot"><span>Total : <strong>${list.length} présent(s)</strong></span><span>Édité le ${new Date().toLocaleDateString('fr-FR')}</span></div>
+  <div class="sigs"><div class="sig-line">Le Président</div><div class="sig-line">Le Secrétaire Général</div></div>
+  <script>window.onload=()=>window.print()<\/script>
+  </body></html>`);
+  w.document.close();
+}
+
+function exportHistoCSV(rid) {
+  const reunion = reunions.find(r=>r.id===rid);
+  const list    = histoPresences[rid] || [];
+  if (!list.length) { toast('Aucune présence à exporter','err'); return; }
+
+  const headers = ['#','NOM','Prénom','Fonction','Téléphone','Email','Heure de présence'];
+  const rows = list.map((p,i) => {
+    const h = p.dateSignature ? new Date(p.dateSignature).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}) : '';
+    return [i+1,(p.nom||'').toUpperCase(),p.prenom||'',p.fonction||'',p.telephone||'',p.email||'',h];
+  });
+  const sep  = '\t';
+  const csv  = [headers,...rows].map(r=>r.map(c=>String(c).replace(/\t/g,' ')).join(sep)).join('\r\n');
+  const blob = new Blob(['\uFEFF'+csv],{type:'text/csv;charset=UTF-8'});
+  const a    = document.createElement('a');
+  a.href     = URL.createObjectURL(blob);
+  a.download = `Presences_MAPHAR_${reunion?.date||'export'}.csv`;
+  a.click(); URL.revokeObjectURL(a.href);
+  toast('Export CSV ✅','ok');
 }
 
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
