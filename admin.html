@@ -7,7 +7,25 @@
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-    :root{--navy:#0f2557;--blue:#1641a4;--blue2:#2156d4;--sky:#eef2ff;--green:#059669;--red:#dc2626;--grey:#64748b;--border:#e2e8f0;--bg:#f4f6fb;--card:#fff}
+    :root{--navy:#0f2557;--blue:#1641a4;--blue2:#2156d4;--sky:#eef2ff;--green:#059669;--red:#dc2626;--grey:#64748b;--border:#e2e8f0;--bg:#f4f6fb;--card:#fff;--text:#0f172a}
+    body.dark{--navy:#1e3a7a;--blue:#3b6fd4;--blue2:#5b8fee;--sky:#1e2a4a;--green:#10b981;--red:#f87171;--grey:#94a3b8;--border:#334155;--bg:#0f172a;--card:#1e293b;--text:#e2e8f0}
+    body.dark .top-bar{background:#0f172a}
+    body.dark .tabs{background:#1e293b;border-color:#334155}
+    body.dark .field input,body.dark .f-group input,body.dark .f-group select,body.dark .search-input{background:#0f172a;color:#e2e8f0;border-color:#334155}
+    body.dark .card{background:#1e293b}
+    body.dark .r-item{border-color:#334155;background:#1e293b}
+    body.dark .r-item:hover{background:#263548}
+    body.dark .r-item.sel{background:#1e3a7a;border-color:var(--blue)}
+    body.dark thead{background:#0f172a}
+    body.dark tbody tr:hover{background:#263548}
+    body.dark .modal{background:#1e293b}
+    body.dark .count-pill{background:#334155;color:#94a3b8}
+    body.dark .histo-head{background:#0f172a}
+    body.dark .histo-head:hover{background:#1e3a7a}
+    body.dark .histo-body{background:#1e293b;border-color:#334155}
+    body.dark .histo-item{border-color:#334155}
+    body.dark .card-title{color:#93c5fd}
+    body.dark tbody td{color:#cbd5e1}
     body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:#0f172a;min-height:100vh}
 
     /* LOGIN */
@@ -207,6 +225,7 @@ service cloud.firestore {
     <span class="tb-name">MAPHAR</span>
     <span class="tb-badge">Administration</span>
     <span class="tb-spacer"></span>
+    <button class="tb-logout" id="darkBtn" onclick="toggleDark()" style="margin-right:6px">🌙</button>
     <button class="tb-logout" onclick="doLogout()">⎋ Déconnexion</button>
   </header>
 
@@ -214,6 +233,8 @@ service cloud.firestore {
     <button class="tab active" id="tabBtn-reunions" onclick="switchTab('reunions')">📅 Réunions &amp; QR</button>
     <button class="tab" id="tabBtn-presences" onclick="switchTab('presences')">👥 Présences</button>
     <button class="tab" id="tabBtn-historique" onclick="switchTab('historique')">🗂️ Historique</button>
+    <button class="tab" id="tabBtn-membres" onclick="switchTab('membres')">👤 Membres</button>
+    <button class="tab" id="tabBtn-stats" onclick="switchTab('stats')">📊 Statistiques</button>
   </nav>
 
   <div class="content">
@@ -230,6 +251,10 @@ service cloud.firestore {
           <div class="f-group">
             <label>Date *</label>
             <input type="date" id="newDate">
+          </div>
+          <div class="f-group" style="grid-column:1/-1">
+            <label>Lieu</label>
+            <input type="text" id="newLieu" placeholder="Ex : Salle de conférence MAPHAR, Abidjan">
           </div>
         </div>
         <div style="margin-top:14px">
@@ -262,6 +287,7 @@ service cloud.firestore {
             <div style="display:flex;gap:10px;margin-top:20px;flex-wrap:wrap" class="no-print">
               <button class="btn btn-outline" onclick="printQR()">🖨️ Imprimer le QR</button>
               <button class="btn btn-primary" onclick="goToPresences()">👥 Voir les présences</button>
+              <button class="btn" style="background:#25D366;color:#fff" onclick="shareWhatsApp()">📱 WhatsApp</button>
             </div>
             <div class="divider no-print"></div>
             <div style="font-size:11px;color:var(--grey)" class="no-print">🔗 <span id="qrUrl" style="word-break:break-all"></span></div>
@@ -324,6 +350,10 @@ service cloud.firestore {
             <label>Année</label>
             <select id="hAnnee" onchange="filterHistorique()"><option value="">Toutes</option></select>
           </div>
+          <div class="f-group" style="margin:0;flex:1;min-width:180px">
+            <label>Recherche globale (nom, prénom…)</label>
+            <input type="text" id="hSearch" placeholder="🔍 Rechercher un membre…" oninput="globalSearch()">
+          </div>
           <span class="count-pill" id="hCount">0 réunion</span>
         </div>
         <div id="histoList">
@@ -331,6 +361,71 @@ service cloud.firestore {
         </div>
       </div>
     </div><!-- /tab-historique -->
+
+    <!-- TAB MEMBRES -->
+    <div id="tab-membres" class="panel">
+      <div class="card no-print">
+        <div class="card-title">➕ Ajouter un membre</div>
+        <div class="f-grid">
+          <div class="f-group"><label>NOM *</label><input type="text" id="mNom" placeholder="NOM DE FAMILLE"></div>
+          <div class="f-group"><label>Prénom *</label><input type="text" id="mPrenom" placeholder="Prénom"></div>
+          <div class="f-group"><label>Fonction *</label><input type="text" id="mFonction" placeholder="Ex : Président"></div>
+          <div class="f-group"><label>Téléphone *</label><input type="tel" id="mTel" placeholder="07 00 00 00 00"></div>
+          <div class="f-group" style="grid-column:1/-1"><label>Email</label><input type="email" id="mEmail" placeholder="email@exemple.com"></div>
+        </div>
+        <div style="margin-top:14px"><button class="btn btn-primary" onclick="addMembre()">➕ Ajouter le membre</button></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">👥 Liste des membres du Bureau Exécutif</div>
+        <div class="tbl-actions no-print">
+          <input class="search-input" id="mSearch" placeholder="🔍 Rechercher…" oninput="filterMembres()">
+          <span class="count-pill" id="mCount">0 membre</span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>#</th><th>NOM</th><th>Prénom</th><th>Fonction</th><th>Téléphone</th><th>Email</th><th class="no-print">Actions</th></tr></thead>
+            <tbody id="mBody"><tr><td colspan="7"><div class="empty-tbl"><div class="e-icon">👥</div><div class="e-title">Chargement…</div></div></td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div><!-- /tab-membres -->
+
+    <!-- TAB STATS -->
+    <div id="tab-stats" class="panel">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px" id="statsKPIs">
+        <div class="card" style="text-align:center;padding:20px">
+          <div style="font-size:36px;font-weight:900;color:var(--blue)" id="st-total-reunions">–</div>
+          <div style="font-size:13px;color:var(--grey);margin-top:4px">Réunions tenues</div>
+        </div>
+        <div class="card" style="text-align:center;padding:20px">
+          <div style="font-size:36px;font-weight:900;color:var(--green)" id="st-total-presences">–</div>
+          <div style="font-size:13px;color:var(--grey);margin-top:4px">Présences enregistrées</div>
+        </div>
+        <div class="card" style="text-align:center;padding:20px">
+          <div style="font-size:36px;font-weight:900;color:var(--orange,#d97706)" id="st-moy-presences">–</div>
+          <div style="font-size:13px;color:var(--grey);margin-top:4px">Présences moy. / réunion</div>
+        </div>
+        <div class="card" style="text-align:center;padding:20px">
+          <div style="font-size:36px;font-weight:900;color:var(--navy)" id="st-membres-uniques">–</div>
+          <div style="font-size:13px;color:var(--grey);margin-top:4px">Membres uniques</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">🏆 Top membres (présences)</div>
+        <div id="st-top-membres">
+          <div class="empty-tbl"><div class="e-icon">📊</div><div class="e-title">Chargement…</div></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">📅 Présences par réunion</div>
+        <div id="st-par-reunion">
+          <div class="empty-tbl"><div class="e-icon">📊</div><div class="e-title">Chargement…</div></div>
+        </div>
+      </div>
+    </div><!-- /tab-stats -->
 
   </div>
 </div><!-- /appScreen -->
@@ -357,11 +452,17 @@ service cloud.firestore {
 <div class="toast" id="toast"></div>
 
 <script>
+// SHA-256 helper
+async function sha256(str) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+
 // ═══════════════════════════════════════════════════════
 // ⚙️  CONFIGURATION  —  MODIFIEZ CES VALEURS
 // ═══════════════════════════════════════════════════════
 const CONFIG = {
-  password:    "MAPHAR2026",
+  passwordHash: "c2ef128e3aeb2cdfeb924237adb17ceaaedad8afae9fef2a079c5cfc9c8aed01", // SHA-256 de votre mot de passe
   baseUrl:     "https://amanimarcelnguessan-create.github.io/Maphar-presence-",
   scanFile:    "scan.html",
   orgName:     "MAPHAR",
@@ -407,9 +508,10 @@ function loadFirebase() {
 }
 
 // ── Auth
-function doLogin() {
-  if (document.getElementById('pwdInput').value !== CONFIG.password) {
-    const inp = document.getElementById('pwdInput');
+async function doLogin() {
+  const inp = document.getElementById('pwdInput');
+  const hash = await sha256(inp.value);
+  if (hash !== CONFIG.passwordHash) {
     inp.classList.add('shake');
     setTimeout(()=>inp.classList.remove('shake'), 400);
     document.getElementById('loginErr').textContent = '❌ Mot de passe incorrect';
@@ -442,16 +544,22 @@ let reunions = [], selectedR = null, presences = [], presenceUnsub = null, autoR
 
 function initApp() {
   document.getElementById('newDate').valueAsDate = new Date();
+  if (localStorage.getItem('maphar_dark') === '1') {
+    document.body.classList.add('dark');
+    document.getElementById('darkBtn').textContent = '☀️';
+  }
   loadReunions();
 }
 
 function switchTab(name) {
-  ['reunions','presences','historique'].forEach(n => {
+  ['reunions','presences','historique','membres','stats'].forEach(n => {
     document.getElementById('tab-'+n).classList.toggle('active', n===name);
     document.getElementById('tabBtn-'+n).classList.toggle('active', n===name);
   });
   if (name==='presences') { fillRSelect(); }
   if (name==='historique') { buildHistorique(); }
+  if (name==='stats') { buildStats(); }
+  if (name==='membres') { loadMembres(); }
   if (name==='reunions') {
     if (presenceUnsub) { presenceUnsub(); presenceUnsub=null; }
     if (autoRefreshTimer) { clearInterval(autoRefreshTimer); autoRefreshTimer=null; }
@@ -532,10 +640,12 @@ async function createReunion() {
   const date  = document.getElementById('newDate').value;
   if (!label||!date) { toast('Renseignez l\'intitulé et la date','err'); return; }
   try {
+    const lieu = document.getElementById('newLieu').value.trim();
     const ref = await db.collection('maphar_reunions').add({
-      label, date, createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      label, date, lieu, createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
     document.getElementById('newLabel').value='';
+    document.getElementById('newLieu').value='';
     toast('Réunion créée ✅','ok');
     await loadReunions();
     selectR(ref.id);
@@ -559,19 +669,27 @@ function renderQR() {
   const ds = selectedR.date
     ? new Date(selectedR.date+'T00:00:00').toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'})
     : '';
-  document.getElementById('qrDate').textContent = ds;
+  const lieu = selectedR.lieu ? ` · 📍 ${selectedR.lieu}` : '';
+  document.getElementById('qrDate').textContent = ds + lieu;
 }
 
 async function delR(id) {
-  if (!confirm('Supprimer cette réunion ?')) return;
-  await db.collection('maphar_reunions').doc(id).delete();
-  if (selectedR?.id===id) {
-    selectedR=null;
-    document.getElementById('qrEmpty').style.display='block';
-    document.getElementById('qrReady').style.display='none';
-  }
-  await loadReunions();
-  toast('Réunion supprimée','ok');
+  if (!confirm('Supprimer cette réunion et toutes ses présences ?')) return;
+  try {
+    // Cascade: supprimer toutes les présences associées
+    const snap = await db.collection('maphar_presences').where('reunionId','==',id).get();
+    const batch = db.batch();
+    snap.docs.forEach(d => batch.delete(d.ref));
+    batch.delete(db.collection('maphar_reunions').doc(id));
+    await batch.commit();
+    if (selectedR?.id===id) {
+      selectedR=null;
+      document.getElementById('qrEmpty').style.display='block';
+      document.getElementById('qrReady').style.display='none';
+    }
+    await loadReunions();
+    toast(`Réunion et ${snap.size} présence(s) supprimées`,'ok');
+  } catch(e) { toast('Erreur de suppression','err'); }
 }
 
 // ── Présences
@@ -884,6 +1002,67 @@ async function getHistoCount(id) {
   if (el) el.textContent = snap.size + ' présent' + (snap.size>1?'s':'');
 }
 
+async function globalSearch() {
+  const q = document.getElementById('hSearch').value.trim().toLowerCase();
+  if (!q) { filterHistorique(); return; }
+
+  // Search across all presences in all reunions
+  const el = document.getElementById('histoList');
+  el.innerHTML = '<div style="text-align:center;padding:30px;color:#94a3b8">⏳ Recherche en cours…</div>';
+
+  try {
+    const snap = await db.collection('maphar_presences').get();
+    const all  = snap.docs.map(d=>({id:d.id,...d.data()}));
+    const matches = all.filter(p =>
+      (p.nom||'').toLowerCase().includes(q) ||
+      (p.prenom||'').toLowerCase().includes(q) ||
+      (p.fonction||'').toLowerCase().includes(q) ||
+      (p.telephone||'').includes(q)
+    );
+
+    if (!matches.length) {
+      el.innerHTML = '<div class="empty-tbl"><div class="e-icon">🔍</div><div class="e-title">Aucun résultat</div><div class="e-sub">Aucun membre ne correspond à cette recherche</div></div>';
+      document.getElementById('hCount').textContent = '0 résultat';
+      return;
+    }
+
+    // Group by reunion
+    const byReunion = {};
+    matches.forEach(p => {
+      if (!byReunion[p.reunionId]) byReunion[p.reunionId] = [];
+      byReunion[p.reunionId].push(p);
+    });
+
+    let html = '';
+    for (const [rid, list] of Object.entries(byReunion)) {
+      const reunion = reunions.find(r=>r.id===rid);
+      const label   = reunion?.label || 'Réunion inconnue';
+      const ds      = reunion?.date ? new Date(reunion.date+'T00:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'}) : '';
+      const rows    = list.map((p,i) => {
+        const h = p.dateSignature ? new Date(p.dateSignature).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}) : '–';
+        const sigHtml = p.signature ? `<img src="${p.signature}" style="height:30px;max-width:80px;border-radius:4px">` : '–';
+        return `<tr><td>${i+1}</td><td><strong>${esc((p.nom||'').toUpperCase())}</strong></td><td>${esc(p.prenom)}</td><td>${esc(p.fonction)}</td><td>${esc(p.telephone)}</td><td>${h}</td><td>${sigHtml}</td></tr>`;
+      }).join('');
+      html += `<div class="histo-item" style="margin-bottom:10px">
+        <div class="histo-head" style="cursor:default">
+          <div><div style="font-size:14px;font-weight:700">${esc(label)}</div><div style="font-size:12px;color:var(--grey)">📅 ${ds}</div></div>
+          <span class="r-count">${list.length} résultat(s)</span>
+        </div>
+        <div class="histo-body">
+          <div class="table-wrap"><table>
+            <thead><tr><th>#</th><th>NOM</th><th>Prénom</th><th>Fonction</th><th>Téléphone</th><th>Heure</th><th>Signature</th></tr></thead>
+            <tbody>${rows}</tbody>
+          </table></div>
+        </div>
+      </div>`;
+    }
+    el.innerHTML = html;
+    document.getElementById('hCount').textContent = `${matches.length} résultat(s) dans ${Object.keys(byReunion).length} réunion(s)`;
+  } catch(e) {
+    el.innerHTML = '<div class="empty-tbl"><div class="e-icon">❌</div><div class="e-title">Erreur de recherche</div></div>';
+  }
+}
+
 async function toggleHisto(id) {
   const body  = document.getElementById('hb-'+id);
   const arrow = document.getElementById('hArrow-'+id);
@@ -1020,6 +1199,159 @@ function exportHistoCSV(rid) {
   a.download = `Presences_MAPHAR_${reunion?.date||'export'}.csv`;
   a.click(); URL.revokeObjectURL(a.href);
   toast('Export CSV ✅','ok');
+}
+
+// ══════════════════════════════════════
+// MEMBRES
+// ══════════════════════════════════════
+let membres = [];
+
+async function loadMembres() {
+  try {
+    const snap = await db.collection('maphar_membres').orderBy('nom','asc').get();
+    membres = snap.docs.map(d=>({id:d.id,...d.data()}));
+    renderMembres();
+  } catch(e) { toast('Erreur chargement membres','err'); }
+}
+
+function renderMembres(filter='') {
+  const f    = filter.toLowerCase();
+  const list = membres.filter(m=>!f||(m.nom+' '+m.prenom+' '+m.fonction).toLowerCase().includes(f));
+  document.getElementById('mCount').textContent = list.length+' membre'+(list.length>1?'s':'');
+  const tbody = document.getElementById('mBody');
+  if (!list.length) {
+    tbody.innerHTML = `<tr><td colspan="7"><div class="empty-tbl"><div class="e-icon">👥</div><div class="e-title">${membres.length?'Aucun résultat':'Aucun membre'}</div></div></td></tr>`;
+    return;
+  }
+  tbody.innerHTML = list.map((m,i)=>`<tr>
+    <td style="color:var(--grey);font-weight:600">${i+1}</td>
+    <td><strong>${esc((m.nom||'').toUpperCase())}</strong></td>
+    <td>${esc(m.prenom)}</td>
+    <td>${esc(m.fonction)}</td>
+    <td>${esc(m.telephone)}</td>
+    <td style="color:var(--grey)">${esc(m.email||'–')}</td>
+    <td class="no-print"><div class="td-actions">
+      <button class="btn btn-red btn-xs" onclick="delMembre('${m.id}')">🗑️</button>
+    </div></td>
+  </tr>`).join('');
+}
+
+function filterMembres() { renderMembres(document.getElementById('mSearch').value); }
+
+async function addMembre() {
+  const nom      = document.getElementById('mNom').value.trim().toUpperCase();
+  const prenom   = document.getElementById('mPrenom').value.trim();
+  const fonction = document.getElementById('mFonction').value.trim();
+  const telephone= document.getElementById('mTel').value.trim();
+  const email    = document.getElementById('mEmail').value.trim();
+  if (!nom||!prenom||!fonction||!telephone) { toast('Champs obligatoires manquants','err'); return; }
+  try {
+    await db.collection('maphar_membres').add({
+      nom, prenom, fonction, telephone, email,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    ['mNom','mPrenom','mFonction','mTel','mEmail'].forEach(id=>document.getElementById(id).value='');
+    toast('Membre ajouté ✅','ok');
+    await loadMembres();
+  } catch(e) { toast('Erreur d\'ajout','err'); }
+}
+
+async function delMembre(id) {
+  if (!confirm('Supprimer ce membre ?')) return;
+  try {
+    await db.collection('maphar_membres').doc(id).delete();
+    toast('Membre supprimé','ok');
+    await loadMembres();
+  } catch(e) { toast('Erreur','err'); }
+}
+
+// ══════════════════════════════════════
+// STATISTIQUES
+// ══════════════════════════════════════
+async function buildStats() {
+  try {
+    const snap = await db.collection('maphar_presences').get();
+    const all  = snap.docs.map(d=>d.data());
+
+    const totalR   = reunions.length;
+    const totalP   = all.length;
+    const moyP     = totalR ? (totalP / totalR).toFixed(1) : 0;
+
+    // Membres uniques (par téléphone)
+    const phones = new Set(all.map(p=>p.telephone).filter(Boolean));
+    const uniques = phones.size;
+
+    document.getElementById('st-total-reunions').textContent  = totalR;
+    document.getElementById('st-total-presences').textContent = totalP;
+    document.getElementById('st-moy-presences').textContent   = moyP;
+    document.getElementById('st-membres-uniques').textContent = uniques;
+
+    // Top membres
+    const compteur = {};
+    all.forEach(p => {
+      const key = `${(p.nom||'').toUpperCase()} ${p.prenom||''}`.trim();
+      if (key) compteur[key] = (compteur[key]||0) + 1;
+    });
+    const topList = Object.entries(compteur).sort((a,b)=>b[1]-a[1]).slice(0,10);
+
+    const topEl = document.getElementById('st-top-membres');
+    if (!topList.length) {
+      topEl.innerHTML = '<div class="empty-tbl"><div class="e-icon">👥</div><div class="e-title">Aucune donnée</div></div>';
+    } else {
+      const max = topList[0][1];
+      topEl.innerHTML = topList.map(([nom,cnt],i) => {
+        const pct = Math.round((cnt/max)*100);
+        const medal = i===0?'🥇':i===1?'🥈':i===2?'🥉':'';
+        return `<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+          <span style="font-size:16px;width:24px">${medal||'·'}</span>
+          <div style="flex:1">
+            <div style="font-size:13px;font-weight:600">${esc(nom)}</div>
+            <div style="height:6px;background:var(--border);border-radius:3px;margin-top:4px">
+              <div style="height:6px;background:var(--blue);border-radius:3px;width:${pct}%;transition:width .5s"></div>
+            </div>
+          </div>
+          <span style="font-size:13px;font-weight:700;color:var(--blue);min-width:40px;text-align:right">${cnt} fois</span>
+        </div>`;
+      }).join('');
+    }
+
+    // Par réunion
+    const parR = reunions.map(r => {
+      const cnt = all.filter(p=>p.reunionId===r.id).length;
+      const ds  = r.date ? new Date(r.date+'T00:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'short',year:'numeric'}) : '–';
+      return {label: r.label, date: ds, cnt};
+    }).sort((a,b)=>b.cnt-a.cnt);
+
+    const parEl = document.getElementById('st-par-reunion');
+    const maxR  = parR[0]?.cnt || 1;
+    parEl.innerHTML = parR.map(r => `
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(r.label)}</div>
+          <div style="font-size:11px;color:var(--grey)">${r.date}</div>
+          <div style="height:6px;background:var(--border);border-radius:3px;margin-top:4px">
+            <div style="height:6px;background:var(--green);border-radius:3px;width:${Math.round((r.cnt/maxR)*100)}%"></div>
+          </div>
+        </div>
+        <span style="font-size:13px;font-weight:700;color:var(--green);min-width:50px;text-align:right">${r.cnt} présent(s)</span>
+      </div>`).join('') || '<div class="empty-tbl"><div class="e-icon">📊</div><div class="e-title">Aucune donnée</div></div>';
+
+  } catch(e) { console.error(e); }
+}
+
+function toggleDark() {
+  const isDark = document.body.classList.toggle('dark');
+  localStorage.setItem('maphar_dark', isDark ? '1' : '0');
+  document.getElementById('darkBtn').textContent = isDark ? '☀️' : '🌙';
+}
+
+function shareWhatsApp() {
+  if (!selectedR) return;
+  const url  = buildScanUrl(selectedR.id);
+  const ds   = selectedR.date ? new Date(selectedR.date+'T00:00:00').toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'}) : '';
+  const lieu = selectedR.lieu ? `\n📍 Lieu : ${selectedR.lieu}` : '';
+  const msg  = `📋 *MAPHAR – Feuille de présence*\n\n*${selectedR.label}*\n📅 ${ds}${lieu}\n\n✍️ Veuillez cliquer sur le lien ci-dessous pour enregistrer votre présence :\n${url}`;
+  window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
 }
 
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}

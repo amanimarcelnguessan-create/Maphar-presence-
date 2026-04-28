@@ -86,30 +86,40 @@
   <div id="formView" style="display:none">
     <div class="form-body">
       <div class="already-warn" id="alreadyWarn">⚠️ Vous avez déjà enregistré votre présence pour cette réunion.</div>
-      <div class="form-lead">✍️ Renseignez vos informations :</div>
-      <div class="field">
-        <label>Prénom <span class="req">*</span></label>
-        <input type="text" id="f-prenom" placeholder="Votre prénom" autocomplete="given-name">
-        <div class="hint" id="h-prenom">Ce champ est obligatoire</div>
+      <div class="form-lead">✍️ Sélectionnez votre nom ou saisissez vos informations :</div>
+
+      <div class="field" id="membreSelectField">
+        <label>Choisir dans la liste des membres</label>
+        <select id="membreSelect" onchange="onMembreSelect()">
+          <option value="">— Sélectionner votre nom —</option>
+        </select>
       </div>
-      <div class="field">
-        <label>Nom <span class="req">*</span></label>
-        <input type="text" id="f-nom" placeholder="Votre nom de famille" autocomplete="family-name">
-        <div class="hint" id="h-nom">Ce champ est obligatoire</div>
-      </div>
-      <div class="field">
-        <label>Fonction <span class="req">*</span></label>
-        <input type="text" id="f-fonction" placeholder="Ex : Président, Secrétaire Général…">
-        <div class="hint" id="h-fonction">Ce champ est obligatoire</div>
-      </div>
-      <div class="field">
-        <label>Téléphone <span class="req">*</span></label>
-        <input type="tel" id="f-telephone" placeholder="Ex : 07 00 00 00 00" autocomplete="tel">
-        <div class="hint" id="h-telephone">Ce champ est obligatoire</div>
-      </div>
-      <div class="field">
-        <label>Email</label>
-        <input type="email" id="f-email" placeholder="votre@email.com" autocomplete="email">
+
+      <div id="manualFields">
+        <div class="field">
+          <label>NOM <span class="req">*</span></label>
+          <input type="text" id="f-nom" placeholder="Votre nom de famille" autocomplete="family-name">
+          <div class="hint" id="h-nom">Ce champ est obligatoire</div>
+        </div>
+        <div class="field">
+          <label>Prénom <span class="req">*</span></label>
+          <input type="text" id="f-prenom" placeholder="Votre prénom" autocomplete="given-name">
+          <div class="hint" id="h-prenom">Ce champ est obligatoire</div>
+        </div>
+        <div class="field">
+          <label>Fonction <span class="req">*</span></label>
+          <input type="text" id="f-fonction" placeholder="Ex : Président, Secrétaire Général…">
+          <div class="hint" id="h-fonction">Ce champ est obligatoire</div>
+        </div>
+        <div class="field">
+          <label>Téléphone <span class="req">*</span></label>
+          <input type="tel" id="f-telephone" placeholder="Ex : 07 00 00 00 00" autocomplete="tel">
+          <div class="hint" id="h-telephone">Ce champ est obligatoire</div>
+        </div>
+        <div class="field">
+          <label>Email</label>
+          <input type="email" id="f-email" placeholder="votre@email.com" autocomplete="email">
+        </div>
       </div>
 
       <div class="field">
@@ -219,12 +229,52 @@ async function init() {
     if (localStorage.getItem('signed_'+reunionId)) {
       document.getElementById('alreadyWarn').style.display='block';
     }
+    // Load membre list
+    try {
+      const mSnap = await db.collection('maphar_membres').orderBy('nom','asc').get();
+      const sel   = document.getElementById('membreSelect');
+      mSnap.docs.forEach(d => {
+        const m   = d.data();
+        const opt = document.createElement('option');
+        opt.value = d.id;
+        opt.textContent = `${(m.nom||'').toUpperCase()} ${m.prenom||''} – ${m.fonction||''}`;
+        opt.dataset.nom = m.nom||'';
+        opt.dataset.prenom = m.prenom||'';
+        opt.dataset.fonction = m.fonction||'';
+        opt.dataset.telephone = m.telephone||'';
+        opt.dataset.email = m.email||'';
+        sel.appendChild(opt);
+      });
+      if (mSnap.size === 0) {
+        document.getElementById('membreSelectField').style.display = 'none';
+      }
+    } catch(e) { document.getElementById('membreSelectField').style.display='none'; }
+
     show('formView');
     setTimeout(initSig, 100);
   } catch(e) {
     console.error(e);
     show('errorView');
   }
+}
+
+// ── Member select autocomplete
+function onMembreSelect() {
+  const sel = document.getElementById('membreSelect');
+  const opt = sel.options[sel.selectedIndex];
+  if (!opt || !opt.value) return;
+  document.getElementById('f-nom').value       = opt.dataset.nom.toUpperCase();
+  document.getElementById('f-prenom').value    = opt.dataset.prenom;
+  document.getElementById('f-fonction').value  = opt.dataset.fonction;
+  document.getElementById('f-telephone').value = opt.dataset.telephone;
+  document.getElementById('f-email').value     = opt.dataset.email;
+  // Clear validation errors
+  ['f-nom','f-prenom','f-fonction','f-telephone'].forEach(id=>{
+    document.getElementById(id).classList.remove('invalid');
+  });
+  ['h-nom','h-prenom','h-fonction','h-telephone'].forEach(id=>{
+    document.getElementById(id).classList.remove('show');
+  });
 }
 
 // ── Signature pad
