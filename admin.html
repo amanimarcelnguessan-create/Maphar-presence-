@@ -688,6 +688,7 @@ async function delR(id) {
       document.getElementById('qrReady').style.display='none';
     }
     await loadReunions();
+    histoPresences = {}; // FIX Bug 3 : vider le cache Historique
     toast(`Réunion et ${snap.size} présence(s) supprimées`,'ok');
   } catch(e) { toast('Erreur de suppression','err'); }
 }
@@ -804,8 +805,16 @@ async function saveEdit() {
 
 async function delP(id) {
   if (!confirm('Supprimer cette présence ?')) return;
-  try { await db.collection('maphar_presences').doc(id).delete(); toast('Supprimé','ok'); }
-  catch(e){toast('Erreur','err');}
+  try {
+    await db.collection('maphar_presences').doc(id).delete();
+    // FIX Bug 4 : mise à jour immédiate du tableau local
+    presences = presences.filter(p => p.id !== id);
+    renderPresences(document.getElementById('srch')?.value || '');
+    // FIX Bug 3 : invalidation du cache Historique
+    histoPresences = {};
+    toast('Supprimé ✅','ok');
+  }
+  catch(e){toast('Erreur de suppression','err');}
 }
 
 function exportCSV() {
@@ -1286,31 +1295,50 @@ async function buildStats() {
     document.getElementById('st-moy-presences').textContent   = moyP;
     document.getElementById('st-membres-uniques').textContent = uniques;
 
-    // Top membres
-    const compteur = {};
+    // FIX Bug 1+2 : regroupement par téléphone pour éviter les doublons dus aux variantes de noms
+    // Le téléphone est la clé stable ; le nom affiché est celui de la 1ère occurrence (fidèle à la liste)
+    const compteurTel = {};
     all.forEach(p => {
-      const key = `${(p.nom||'').toUpperCase()} ${p.prenom||''}`.trim();
-      if (key) compteur[key] = (compteur[key]||0) + 1;
+      const tel = (p.telephone || '').trim().replace(/\s/g,'');
+      if (!tel) return;
+      if (!compteurTel[tel]) {
+        // On garde le nom exactement tel qu'enregistré (fidèle à la liste du personnel)
+        compteurTel[tel] = {
+          label: `${(p.nom||'').toUpperCase()} ${(p.prenom||'')}`.trim(),
+          count: 0
+        };
+      }
+      compteurTel[tel].count++;
     });
-    const topList = Object.entries(compteur).sort((a,b)=>b[1]-a[1]).slice(0,10);
+    // Fallback : si pas de téléphone, regroupement par NOM+Prénom normalisé
+    const noTel = all.filter(p => !(p.telephone||'').trim());
+    const compteurNom = {};
+    noTel.forEach(p => {
+      const key = `${(p.nom||'').toUpperCase()} ${(p.prenom||'').toUpperCase()}`.trim();
+      if (!key) return;
+      if (!compteurNom[key]) compteurNom[key] = { label: `${(p.nom||'').toUpperCase()} ${(p.prenom||'')}`.trim(), count: 0 };
+      compteurNom[key].count++;
+    });
+    const combined = [...Object.values(compteurTel), ...Object.values(compteurNom)];
+    const topList  = combined.sort((a,b)=>b.count-a.count).slice(0,10);
 
     const topEl = document.getElementById('st-top-membres');
     if (!topList.length) {
       topEl.innerHTML = '<div class="empty-tbl"><div class="e-icon">👥</div><div class="e-title">Aucune donnée</div></div>';
     } else {
-      const max = topList[0][1];
-      topEl.innerHTML = topList.map(([nom,cnt],i) => {
-        const pct = Math.round((cnt/max)*100);
+      const max = topList[0].count;
+      topEl.innerHTML = topList.map(({label,count},i) => {
+        const pct   = Math.round((count/max)*100);
         const medal = i===0?'🥇':i===1?'🥈':i===2?'🥉':'';
         return `<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
           <span style="font-size:16px;width:24px">${medal||'·'}</span>
           <div style="flex:1">
-            <div style="font-size:13px;font-weight:600">${esc(nom)}</div>
+            <div style="font-size:13px;font-weight:600">${esc(label)}</div>
             <div style="height:6px;background:var(--border);border-radius:3px;margin-top:4px">
               <div style="height:6px;background:var(--blue);border-radius:3px;width:${pct}%;transition:width .5s"></div>
             </div>
           </div>
-          <span style="font-size:13px;font-weight:700;color:var(--blue);min-width:40px;text-align:right">${cnt} fois</span>
+          <span style="font-size:13px;font-weight:700;color:var(--blue);min-width:40px;text-align:right">${count} fois</span>
         </div>`;
       }).join('');
     }
