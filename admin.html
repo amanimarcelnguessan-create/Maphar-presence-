@@ -413,7 +413,10 @@ service cloud.firestore {
       </div>
 
       <div class="card">
-        <div class="card-title">🏆 Top membres (présences)</div>
+        <div class="card-title" style="justify-content:space-between">
+          <span>🏆 Top membres (présences)</span>
+          <button class="btn btn-red btn-sm no-print" onclick="purgerPresencesOrphelines()" title="Supprimer les présences dont le membre a été effacé du personnel">🧹 Purger noms supprimés</button>
+        </div>
         <div id="st-top-membres">
           <div class="empty-tbl"><div class="e-icon">📊</div><div class="e-title">Chargement…</div></div>
         </div>
@@ -1266,20 +1269,90 @@ async function addMembre() {
 }
 
 async function delMembre(id) {
-  if (!confirm('Supprimer ce membre ?')) return;
+  // Récupérer le membre pour connaître son téléphone avant suppression
+  const mSnap = await db.collection('maphar_membres').doc(id).get();
+  const m = mSnap.exists ? mSnap.data() : null;
+  const tel = m?.telephone?.trim() || '';
+  const nomLabel = m ? `${(m.nom||'').toUpperCase()} ${m.prenom||''}`.trim() : 'ce membre';
+
+  const choix = confirm(
+    `Supprimer "${nomLabel}" ?\n\nCliquez OK pour supprimer AUSSI toutes ses présences enregistrées.\nCliquez Annuler pour ne pas supprimer.`
+  );
+  if (!choix) return;
+
   try {
+    // 1. Supprimer le membre
     await db.collection('maphar_membres').doc(id).delete();
-    toast('Membre supprimé','ok');
+
+    // 2. Supprimer toutes ses présences (par téléphone si dispo, sinon par nom+prénom)
+    let presSnap;
+    if (tel) {
+      presSnap = await db.collection('maphar_presences').where('telephone','==',tel).get();
+    } else if (m) {
+      presSnap = await db.collection('maphar_presences')
+        .where('nom','==',m.nom||'').get();
+    }
+    if (presSnap && !presSnap.empty) {
+      const batch = db.batch();
+      presSnap.docs.forEach(d => batch.delete(d.ref));
+      await batch.commit();
+      toast(`"${nomLabel}" supprimé avec ${presSnap.size} présence(s) ✅`,'ok');
+    } else {
+      toast(`Membre supprimé (aucune présence associée) ✅`,'ok');
+    }
+
+    // 3. Invalider le cache
+    histoPresences = {};
     await loadMembres();
-  } catch(e) { toast('Erreur','err'); }
+  } catch(e) { console.error(e); toast('Erreur de suppression','err'); }
 }
 
 // ══════════════════════════════════════
 // STATISTIQUES
 // ══════════════════════════════════════
+// Purge les présences dont le membre a été supprimé du personnel
+async function purgerPresencesOrphelines() {
+  if (!confirm('Supprimer de Firebase toutes les présences dont le membre n\'existe plus dans la liste du personnel ?\n\nCette action est irréversible.')) return;
+  try {
+    // 1. Charger tous les membres actifs (téléphones connus)
+    const mSnap = await db.collection('maphar_membres').get({source:'server'});
+    const telActifs = new Set(mSnap.docs.map(d=>(d.data().telephone||'').trim()).filter(Boolean));
+    const nomsActifs = new Set(mSnap.docs.map(d=>(d.data().nom||'').toUpperCase().trim()).filter(Boolean));
+
+    // 2. Charger toutes les présences
+    const pSnap = await db.collection('maphar_presences').get({source:'server'});
+    const aSupprimer = pSnap.docs.filter(d => {
+      const p = d.data();
+      const tel = (p.telephone||'').trim();
+      const nom = (p.nom||'').toUpperCase().trim();
+      // Orpheline si : téléphone inconnu ET nom inconnu
+      if (tel && telActifs.has(tel)) return false; // membre actif par tel
+      if (!tel && nom && nomsActifs.has(nom)) return false; // membre actif par nom
+      if (!tel && !nom) return true; // entrée vide
+      if (tel && !telActifs.has(tel)) return true; // tel inconnu
+      if (!tel && nom && !nomsActifs.has(nom)) return true; // nom inconnu
+      return false;
+    });
+
+    if (!aSupprimer.length) {
+      toast('Aucune présence orpheline trouvée ✅','ok');
+      return;
+    }
+
+    const batch = db.batch();
+    aSupprimer.forEach(d => batch.delete(d.ref));
+    await batch.commit();
+
+    histoPresences = {};
+    await buildStats();
+    toast(`${aSupprimer.length} présence(s) orpheline(s) supprimée(s) ✅`,'ok');
+  } catch(e) { console.error(e); toast('Erreur de purge','err'); }
+}
+
 async function buildStats() {
   try {
-    const snap = await db.collection('maphar_presences').get();
+    // Force fetch depuis le serveur (ignore le cache offline Firestore)
+    const snap = await db.collection('maphar_presences').get({source:'server'});
     const all  = snap.docs.map(d=>d.data());
 
     const totalR   = reunions.length;
