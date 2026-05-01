@@ -1312,32 +1312,62 @@ async function delMembre(id) {
 // ══════════════════════════════════════
 // Purge les présences dont le membre a été supprimé du personnel
 async function purgerPresencesOrphelines() {
-  if (!confirm('Supprimer de Firebase toutes les présences dont le membre n\'existe plus dans la liste du personnel ?\n\nCette action est irréversible.')) return;
+  if (!confirm(
+    'Purger les présences de TEST ?\n\n' +
+    '⚠️ Seules les présences dont NI le téléphone NI le nom (même approximatif) ' +
+    'ne correspond à un membre de la liste seront supprimées.\n\n' +
+    'Les membres ayant saisi manuellement mais dont le nom est reconnu sont CONSERVÉS.'
+  )) return;
   try {
-    // 1. Charger tous les membres actifs (téléphones connus)
+    // 1. Charger tous les membres actifs avec normalisation
     const mSnap = await db.collection('maphar_membres').get({source:'server'});
-    const telActifs = new Set(mSnap.docs.map(d=>(d.data().telephone||'').trim()).filter(Boolean));
-    const nomsActifs = new Set(mSnap.docs.map(d=>(d.data().nom||'').toUpperCase().trim()).filter(Boolean));
+    const membres = mSnap.docs.map(d => d.data());
+    // Index par téléphone normalisé
+    const telActifs = new Set(
+      membres.map(m=>(m.telephone||'').replace(/\s/g,'')).filter(Boolean)
+    );
+    // Index par nom normalisé (nom seul)
+    const nomActifsNorm = new Set(
+      membres.map(m=>normalize(m.nom)).filter(Boolean)
+    );
+    // Index par nom+prénom normalisé (combiné)
+    const fullNameActifs = new Set(
+      membres.map(m=>normalize(`${m.nom||''} ${m.prenom||''}`)).filter(Boolean)
+    );
 
     // 2. Charger toutes les présences
     const pSnap = await db.collection('maphar_presences').get({source:'server'});
+
     const aSupprimer = pSnap.docs.filter(d => {
       const p = d.data();
-      const tel = (p.telephone||'').trim();
-      const nom = (p.nom||'').toUpperCase().trim();
-      // Orpheline si : téléphone inconnu ET nom inconnu
-      if (tel && telActifs.has(tel)) return false; // membre actif par tel
-      if (!tel && nom && nomsActifs.has(nom)) return false; // membre actif par nom
-      if (!tel && !nom) return true; // entrée vide
-      if (tel && !telActifs.has(tel)) return true; // tel inconnu
-      if (!tel && nom && !nomsActifs.has(nom)) return true; // nom inconnu
-      return false;
+      const tel       = (p.telephone||'').replace(/\s/g,'');
+      const nomNorm   = normalize(p.nom);
+      const fullNorm  = normalize(`${p.nom||''} ${p.prenom||''}`);
+
+      // Conserver si téléphone reconnu
+      if (tel && telActifs.has(tel)) return false;
+      // Conserver si nom seul reconnu (saisie manuelle sans prénom)
+      if (nomNorm && nomActifsNorm.has(nomNorm)) return false;
+      // Conserver si nom+prénom reconnu
+      if (fullNorm && fullNameActifs.has(fullNorm)) return false;
+
+      // Orpheline confirmée : ni téléphone ni nom ne correspond à aucun membre
+      return true;
     });
 
     if (!aSupprimer.length) {
-      toast('Aucune présence orpheline trouvée ✅','ok');
+      toast('✅ Aucune présence orpheline — tout est lié à un membre connu.','ok');
       return;
     }
+
+    // Afficher un aperçu avant suppression
+    const apercu = aSupprimer.slice(0,5).map(d=>{
+      const p=d.data();
+      return `• ${(p.nom||'').toUpperCase()} ${p.prenom||''} (tél: ${p.telephone||'—'})`;
+    }).join('\n');
+    const suite = aSupprimer.length > 5 ? `\n… et ${aSupprimer.length-5} autre(s)` : '';
+
+    if (!confirm(`${aSupprimer.length} présence(s) orpheline(s) identifiée(s) :\n\n${apercu}${suite}\n\nConfirmer la suppression ?`)) return;
 
     const batch = db.batch();
     aSupprimer.forEach(d => batch.delete(d.ref));
@@ -1345,7 +1375,7 @@ async function purgerPresencesOrphelines() {
 
     histoPresences = {};
     await buildStats();
-    toast(`${aSupprimer.length} présence(s) orpheline(s) supprimée(s) ✅`,'ok');
+    toast(`🗑️ ${aSupprimer.length} présence(s) orpheline(s) supprimée(s)`, 'ok');
   } catch(e) { console.error(e); toast('Erreur de purge','err'); }
 }
 
@@ -1359,41 +1389,76 @@ async function buildStats() {
     const totalP   = all.length;
     const moyP     = totalR ? (totalP / totalR).toFixed(1) : 0;
 
-    // Membres uniques (par téléphone)
-    const phones = new Set(all.map(p=>p.telephone).filter(Boolean));
-    const uniques = phones.size;
+    // Membres uniques — combinaison téléphone + nom normalisé
+    const phonesUniques = new Set(all.map(p=>(p.telephone||'').replace(/\s/g,'')).filter(Boolean));
+    const nomsUniques   = new Set(all.filter(p=>!(p.telephone||'').trim()).map(p=>normalize(`${p.nom||''} ${p.prenom||''}`)).filter(Boolean));
+    const uniques = phonesUniques.size + nomsUniques.size;
 
     document.getElementById('st-total-reunions').textContent  = totalR;
     document.getElementById('st-total-presences').textContent = totalP;
     document.getElementById('st-moy-presences').textContent   = moyP;
     document.getElementById('st-membres-uniques').textContent = uniques;
 
-    // FIX Bug 1+2 : regroupement par téléphone pour éviter les doublons dus aux variantes de noms
-    // Le téléphone est la clé stable ; le nom affiché est celui de la 1ère occurrence (fidèle à la liste)
-    const compteurTel = {};
+    // ═══════════════════════════════════════════════════════════════
+    // UNIFICATION : même membre qu'il ait sélectionné dans la liste
+    // OU saisi manuellement — clé = téléphone normalisé OU nom+prénom normalisé
+    // Le nom affiché = version fidèle de la liste du personnel si dispo,
+    // sinon la version de la première saisie
+    // ═══════════════════════════════════════════════════════════════
+
+    // 1. Charger la liste du personnel pour récupérer les noms canoniques
+    const mSnap = await db.collection('maphar_membres').get({source:'server'});
+    const membres = mSnap.docs.map(d=>d.data());
+
+    // Index : téléphone normalisé → nom canonique
+    const telToCanon = {};
+    membres.forEach(m => {
+      const tel = (m.telephone||'').replace(/\s/g,'');
+      if (tel) telToCanon[tel] = `${(m.nom||'').toUpperCase()} ${m.prenom||''}`.trim();
+    });
+    // Index : nom+prénom normalisé → nom canonique
+    const normToCanon = {};
+    membres.forEach(m => {
+      const key = normalize(`${m.nom||''} ${m.prenom||''}`);
+      if (key) normToCanon[key] = `${(m.nom||'').toUpperCase()} ${m.prenom||''}`.trim();
+      // Aussi par nom seul normalisé
+      const nomKey = normalize(m.nom||'');
+      if (nomKey) normToCanon[nomKey] = `${(m.nom||'').toUpperCase()} ${m.prenom||''}`.trim();
+    });
+
+    // 2. Regroupement unifié
+    const compteur = {}; // clé unifiée → {label, count}
+
     all.forEach(p => {
-      const tel = (p.telephone || '').trim().replace(/\s/g,'');
-      if (!tel) return;
-      if (!compteurTel[tel]) {
-        // On garde le nom exactement tel qu'enregistré (fidèle à la liste du personnel)
-        compteurTel[tel] = {
-          label: `${(p.nom||'').toUpperCase()} ${(p.prenom||'')}`.trim(),
-          count: 0
-        };
+      const tel       = (p.telephone||'').replace(/\s/g,'');
+      const fullNorm  = normalize(`${p.nom||''} ${p.prenom||''}`);
+      const nomNorm   = normalize(p.nom||'');
+
+      let cle, label;
+
+      if (tel) {
+        // Clé prioritaire = téléphone
+        cle   = 'tel:' + tel;
+        // Nom canonique depuis la liste si dispo, sinon tel qu'enregistré
+        label = telToCanon[tel] || `${(p.nom||'').toUpperCase()} ${p.prenom||''}`.trim();
+      } else {
+        // Clé secondaire = nom+prénom normalisé
+        // Essai : nom+prénom complet, puis nom seul
+        const matchFull = normToCanon[fullNorm];
+        const matchNom  = normToCanon[nomNorm];
+        const canon     = matchFull || matchNom;
+        cle   = 'nom:' + (fullNorm || nomNorm || '?');
+        label = canon || `${(p.nom||'').toUpperCase()} ${p.prenom||''}`.trim();
       }
-      compteurTel[tel].count++;
+
+      if (!cle || cle === 'tel:' || cle === 'nom:?') return;
+      if (!compteur[cle]) compteur[cle] = { label: label || '?', count: 0 };
+      // Si le nom canonique est maintenant dispo (premier enreg. sans liste), on l'applique
+      if (label && label !== '?') compteur[cle].label = label;
+      compteur[cle].count++;
     });
-    // Fallback : si pas de téléphone, regroupement par NOM+Prénom normalisé
-    const noTel = all.filter(p => !(p.telephone||'').trim());
-    const compteurNom = {};
-    noTel.forEach(p => {
-      const key = `${(p.nom||'').toUpperCase()} ${(p.prenom||'').toUpperCase()}`.trim();
-      if (!key) return;
-      if (!compteurNom[key]) compteurNom[key] = { label: `${(p.nom||'').toUpperCase()} ${(p.prenom||'')}`.trim(), count: 0 };
-      compteurNom[key].count++;
-    });
-    const combined = [...Object.values(compteurTel), ...Object.values(compteurNom)];
-    const topList  = combined.sort((a,b)=>b.count-a.count).slice(0,10);
+
+    const topList = Object.values(compteur).sort((a,b)=>b.count-a.count).slice(0,10);
 
     const topEl = document.getElementById('st-top-membres');
     if (!topList.length) {
@@ -1453,6 +1518,12 @@ function shareWhatsApp() {
   const lieu = selectedR.lieu ? `\n📍 Lieu : ${selectedR.lieu}` : '';
   const msg  = `📋 *MAPHAR – Feuille de présence*\n\n*${selectedR.label}*\n📅 ${ds}${lieu}\n\n✍️ Veuillez cliquer sur le lien ci-dessous pour enregistrer votre présence :\n${url}`;
   window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+}
+
+// Normalisation : supprime accents, met en minuscule, unifie tirets/espaces
+function normalize(str) {
+  return (str || '').normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .toLowerCase().replace(/[-'\s]+/g,' ').trim();
 }
 
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
