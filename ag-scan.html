@@ -149,15 +149,15 @@
       <!-- PROCURATIONS -->
       <div class="proc-toggle" onclick="toggleProcSection()">
         <input type="checkbox" id="hasProcCheck" onchange="toggleProcSection()">
-        <label for="hasProcCheck">✋ Je détiens une ou plusieurs procurations</label>
+        <label for="hasProcCheck">✋ Je détiens une procuration (1 maximum)</label>
       </div>
 
       <div class="proc-section" id="procSection">
         <div class="sec-label">📜 Procurations reçues</div>
         <div id="procList"></div>
-        <button type="button" class="btn-add-proc" onclick="addProcItem()">➕ Ajouter une procuration</button>
+        <button type="button" class="btn-add-proc" id="btnAddProc" onclick="addProcItem()">➕ Ajouter la procuration</button>
         <div style="font-size:11px;color:#92400e;margin-top:8px;line-height:1.5">
-          ℹ️ Renseignez le nom et l'officine du membre absent qui vous mandate.
+          ℹ️ Renseignez le nom et l'officine du membre absent qui vous mandate. Une seule procuration par porteur autorisée.
         </div>
       </div>
 
@@ -267,6 +267,77 @@ async function init() {
   } catch(e) { console.error(e); show('errorView'); }
 }
 
+// ── Normalisation des noms pour comparaison insensible aux accents/casse
+function normalizeName(s) {
+  return (s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/\s+/g,' ').trim();
+}
+
+// ── Distance de Levenshtein entre deux chaînes (mesure de similarité)
+function levenshtein(a, b) {
+  const m = a.length, n = b.length;
+  const dp = Array.from({length: m+1}, (_,i) => Array.from({length: n+1}, (_,j) => j===0?i:0));
+  for (let j=1;j<=n;j++) dp[0][j]=j;
+  for (let i=1;i<=m;i++)
+    for (let j=1;j<=n;j++)
+      dp[i][j] = a[i-1]===b[j-1] ? dp[i-1][j-1] : 1+Math.min(dp[i-1][j],dp[i][j-1],dp[i-1][j-1]);
+  return dp[m][n];
+}
+
+// ── Vérifie un nom mandant contre la liste Firestore
+// Le numéro d'ordre, s'il est fourni, est le juge de paix définitif
+// Retourne : {status:'ok'|'doublon'|'similaire', match:string|null, reason:string}
+async function checkMandant(nomSaisi, numeroSaisi) {
+  const snap = await db.collection('maphar_ag_presences')
+    .where('sessionId','==', sessionId)
+    .get();
+
+  const mandantsExistants = [];
+  snap.docs.forEach(doc => {
+    (doc.data().procurations || []).forEach(pr => {
+      mandantsExistants.push({
+        nom:    normalizeName(pr.mandant),
+        numero: (pr.numero||'').trim().toLowerCase(),
+        label:  pr.mandant
+      });
+    });
+  });
+
+  const cible     = normalizeName(nomSaisi);
+  const cibleNum  = (numeroSaisi||'').trim().toLowerCase();
+  if (!cible) return {status:'ok', match:null, reason:''};
+
+  for (const ex of mandantsExistants) {
+    const dist       = levenshtein(cible, ex.nom);
+    const nomIdentique  = dist === 0;
+    const nomSimilaire  = dist <= 2 && cible.length >= 5 && ex.nom.length >= 5;
+    const numFourni     = cibleNum.length > 0 && ex.numero.length > 0;
+    const numIdentique  = numFourni && cibleNum === ex.numero;
+    const numDifferent  = numFourni && cibleNum !== ex.numero;
+
+    if (nomIdentique || nomSimilaire) {
+      if (numDifferent) {
+        // Numéros différents → personnes distinctes malgré noms proches
+        return {status:'ok', match:ex.label,
+          reason:`Noms similaires mais numéros d'ordre différents — personnes distinctes ✅`};
+      }
+      if (numIdentique) {
+        // Même numéro → doublon certain même si faute de frappe dans le nom
+        return {status:'doublon', match:ex.label,
+          reason:`Même numéro d'ordre (${cibleNum}) que "${ex.label}" déjà enregistré`};
+      }
+      // Pas de numéro fourni → on ne peut pas trancher
+      if (nomIdentique) {
+        return {status:'doublon', match:ex.label,
+          reason:`Nom identique à "${ex.label}" déjà enregistré — ajoutez le numéro d'ordre pour lever l'ambiguïté`};
+      }
+      // Nom similaire sans numéro → avertissement, demande numéro
+      return {status:'similaire', match:ex.label,
+        reason:`Ce nom ressemble à "${ex.label}" déjà enregistré — renseignez le numéro d'ordre pour confirmer`};
+    }
+  }
+  return {status:'ok', match:null, reason:''};
+}
+
 // ── Procurations
 let procCount = 0;
 function toggleProcSection() {
@@ -274,35 +345,116 @@ function toggleProcSection() {
   const sec = document.getElementById('procSection');
   cb.checked = !cb.checked;
   sec.classList.toggle('show', cb.checked);
-  if (cb.checked && procCount===0) addProcItem();
+  if (cb.checked && document.querySelectorAll('.proc-item').length === 0) addProcItem();
 }
 
 function addProcItem() {
+  // Règle : 1 seule procuration par porteur
+  if (document.querySelectorAll('.proc-item').length >= 1) return;
   procCount++;
+  const n = procCount;
   const div = document.createElement('div');
   div.className = 'proc-item';
-  div.id = 'proc-'+procCount;
+  div.id = 'proc-'+n;
   div.innerHTML = `
-    <div class="proc-item-num">Procuration n°${procCount}</div>
-    <button type="button" class="proc-remove" onclick="removeProc(${procCount})">✕</button>
+    <div class="proc-item-num">Procuration</div>
+    <button type="button" class="proc-remove" onclick="removeProc(${n})">✕</button>
     <div class="proc-field">
       <label>NOM du mandant (absent) *</label>
-      <input type="text" id="p-nom-${procCount}" placeholder="NOM Prénom du membre absent">
+      <input type="text" id="p-nom-${n}" placeholder="NOM Prénom du membre absent" autocomplete="off">
+      <div id="p-hint-${n}" style="display:none;margin-top:4px;font-size:11px;color:#dc2626;font-weight:600;background:#fef2f2;border:1px solid #fca5a5;border-radius:6px;padding:6px 10px;line-height:1.5"></div>
     </div>
     <div class="proc-field">
       <label>Officine / Institution *</label>
-      <input type="text" id="p-officine-${procCount}" placeholder="Pharmacie / Institution">
+      <input type="text" id="p-officine-${n}" placeholder="Pharmacie / Institution">
     </div>
     <div class="proc-field">
-      <label>Numéro d'ordre (optionnel)</label>
-      <input type="text" id="p-numero-${procCount}" placeholder="Ex : PH-2024-0123">
+      <label>Numéro d'ordre *</label>
+      <input type="text" id="p-numero-${n}" placeholder="Ex : PH-2024-0123">
+      <div id="p-num-hint-${n}" style="display:none;margin-top:4px;font-size:11px;color:#dc2626;font-weight:600">Ce champ est obligatoire</div>
     </div>`;
   document.getElementById('procList').appendChild(div);
+  // Masquer le bouton après ajout (max 1)
+  const btnAdd = document.getElementById('btnAddProc');
+  if (btnAdd) btnAdd.style.display = 'none';
+
+  // ── Vérification en temps réel dès la saisie du mandant ou du numéro
+  let debounceTimer = null;
+  const inputEl  = document.getElementById('p-nom-'+n);
+  const numEl    = document.getElementById('p-numero-'+n);
+  const hintEl   = document.getElementById('p-hint-'+n);
+
+  async function runCheck() {
+    clearTimeout(debounceTimer);
+    hintEl.style.display = 'none';
+    hintEl.innerHTML = '';
+    inputEl.style.borderColor = '';
+    document.getElementById('btnSubmit').disabled = false;
+
+    const val = inputEl.value.trim();
+    if (val.length < 3) return;
+
+    debounceTimer = setTimeout(async () => {
+      try {
+        const numero = numEl ? numEl.value.trim() : '';
+        const result = await checkMandant(val, numero);
+
+        if (result.status === 'doublon') {
+          inputEl.style.borderColor = '#dc2626';
+          hintEl.innerHTML = `⛔ <strong>Procuration bloquée</strong><br>${result.reason}.`;
+          hintEl.style.background = '#fef2f2';
+          hintEl.style.border = '1px solid #fca5a5';
+          hintEl.style.color = '#dc2626';
+          hintEl.style.display = 'block';
+          document.getElementById('btnSubmit').disabled = true;
+
+        } else if (result.status === 'similaire') {
+          inputEl.style.borderColor = '#d97706';
+          hintEl.innerHTML = `⚠️ <strong>${result.reason}.</strong><br>
+            <span style="font-size:10px;margin-top:2px;display:block">Renseignez le numéro d'ordre ci-dessous — s'il est différent, la procuration sera automatiquement validée.</span>`;
+          hintEl.style.background = '#fffbeb';
+          hintEl.style.border = '1px solid #fde68a';
+          hintEl.style.color = '#92400e';
+          hintEl.style.display = 'block';
+          document.getElementById('btnSubmit').disabled = true;
+
+        } else {
+          // OK — y compris si noms similaires mais numéros différents
+          inputEl.style.borderColor = '#16a34a';
+          if (result.reason) {
+            hintEl.innerHTML = `✅ ${result.reason}`;
+            hintEl.style.background = '#f0fdf4';
+            hintEl.style.border = '1px solid #86efac';
+            hintEl.style.color = '#166534';
+            hintEl.style.display = 'block';
+          } else {
+            hintEl.style.display = 'none';
+          }
+          document.getElementById('btnSubmit').disabled = false;
+        }
+      } catch(e) { /* silencieux si offline */ }
+    }, 600);
+  }
+
+  inputEl.addEventListener('input', runCheck);
+  if (numEl) numEl.addEventListener('input', runCheck); // re-vérifier quand le numéro change
+
+  inputEl.addEventListener('blur', () => {
+    if (!inputEl.value.trim()) {
+      inputEl.style.borderColor = '';
+      hintEl.style.display = 'none';
+      document.getElementById('btnSubmit').disabled = false;
+    }
+  });
 }
 
 function removeProc(n) {
   const el = document.getElementById('proc-'+n);
-  if (el) el.remove();
+  if (el) {
+    el.remove();
+    const btnAdd = document.getElementById('btnAddProc');
+    if (btnAdd) btnAdd.style.display = '';
+  }
 }
 
 function getProcurations() {
@@ -372,11 +524,30 @@ async function handleSubmit() {
     validate('f-telephone','h-telephone'),
   ].every(Boolean);
 
+  // Validation du numéro d'ordre si procuration cochée
+  let procFieldsOk = true;
+  if (document.getElementById('hasProcCheck').checked) {
+    document.querySelectorAll('.proc-item').forEach(item => {
+      const n      = item.id.replace('proc-','');
+      const nomEl  = document.getElementById('p-nom-'+n);
+      const numEl  = document.getElementById('p-numero-'+n);
+      const numHint= document.getElementById('p-num-hint-'+n);
+      if (nomEl?.value.trim() && !numEl?.value.trim()) {
+        numEl.style.borderColor = '#dc2626';
+        if (numHint) numHint.style.display = 'block';
+        procFieldsOk = false;
+      } else if (numEl) {
+        numEl.style.borderColor = '';
+        if (numHint) numHint.style.display = 'none';
+      }
+    });
+  }
+
   if(!hasSig) {
     document.getElementById('h-sig').classList.add('show');
     document.getElementById('sigBox').style.borderColor='var(--red)';
   }
-  if(!fieldsOk||!hasSig) return;
+  if(!fieldsOk||!hasSig||!procFieldsOk) return;
 
   const btn=document.getElementById('btnSubmit');
   btn.disabled=true;btn.textContent='⏳ Enregistrement en cours…';
@@ -392,6 +563,45 @@ async function handleSubmit() {
   const hasProcuration = document.getElementById('hasProcCheck').checked && procurations.length>0;
 
   try {
+    // ── Verrou final (2e ligne de défense contre les conditions de course réseau)
+    if (procurations.length > 0) {
+      const existSnap = await db.collection('maphar_ag_presences')
+        .where('sessionId','==', sessionId)
+        .get({source:'server'});
+      const mandantsExistants = [];
+      existSnap.docs.forEach(doc => {
+        (doc.data().procurations || []).forEach(pr => {
+          mandantsExistants.push({
+            nom:    normalizeName(pr.mandant),
+            numero: (pr.numero||'').trim().toLowerCase(),
+            label:  pr.mandant
+          });
+        });
+      });
+
+      for (const pr of procurations) {
+        const cible    = normalizeName(pr.mandant);
+        const cibleNum = (pr.numero||'').trim().toLowerCase();
+        for (const ex of mandantsExistants) {
+          const dist         = levenshtein(cible, ex.nom);
+          const nomMatch     = dist === 0 || (dist <= 2 && cible.length >= 5 && ex.nom.length >= 5);
+          const numFourni    = cibleNum.length > 0 && ex.numero.length > 0;
+          const numDifferent = numFourni && cibleNum !== ex.numero;
+          if (nomMatch && !numDifferent) {
+            btn.disabled = false;
+            btn.textContent = '✅ Confirmer ma présence';
+            const hintEl = document.querySelector('[id^="p-hint-"]');
+            if (hintEl) {
+              hintEl.innerHTML = `⛔ Procuration bloquée — "${pr.mandant}" correspond à "${ex.label}" déjà enregistré.`;
+              hintEl.style.display = 'block';
+            }
+            alert(`⛔ Enregistrement bloqué\n\n« ${pr.mandant} » correspond à « ${ex.label} » déjà enregistré.\n\nSi ce sont deux personnes différentes, renseignez leurs numéros d'ordre distincts.`);
+            return;
+          }
+        }
+      }
+    }
+
     await db.collection('maphar_ag_presences').add({
       sessionId, nom, prenom, officine, numero, telephone, email,
       signature, procurations, hasProcuration,

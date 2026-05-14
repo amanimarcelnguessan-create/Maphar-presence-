@@ -152,7 +152,7 @@
     .histo-head{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;cursor:pointer;background:#fafbff;transition:background .15s}
     .histo-head:hover{background:#f0f7ff}
     .histo-body{padding:16px;border-top:1px solid var(--border);background:#fff}
-    @media print{.no-print{display:none!important}}
+    @media print{.no-print{display:none!important} thead{display:table-header-group} tr{page-break-inside:avoid}}
   </style>
 </head>
 <body>
@@ -633,7 +633,7 @@ function renderRList() {
 }
 
 async function getCount(id) {
-  const snap = await db.collection('maphar_presences').where('reunionId','==',id).get();
+  const snap = await db.collection('maphar_presences').where('reunionId','==',id).get({source:'server'});
   const el = document.getElementById('rc-'+id);
   if (el) el.textContent = snap.size+' présent'+(snap.size>1?'s':'');
 }
@@ -718,7 +718,7 @@ async function loadPresences() {
   // Fonction de chargement direct
   async function fetchNow() {
     try {
-      const snap = await db.collection('maphar_presences').where('reunionId','==',rid).get();
+      const snap = await db.collection('maphar_presences').where('reunionId','==',rid).get({source:'server'});
       presences = snap.docs.map(d=>({id:d.id,...d.data()}));
       presences.sort((a,b)=>(a.dateSignature||'').localeCompare(b.dateSignature||''));
       renderPresences();
@@ -913,14 +913,16 @@ function printPresences() {
     .meta{text-align:center;font-size:11px;color:#333;margin-bottom:14px;text-transform:capitalize;padding-bottom:10px;border-bottom:2px solid #0f2557}
     table{width:100%;border-collapse:collapse;font-size:10px;table-layout:fixed}
     col.c-num{width:4%}
-    col.c-prenom{width:11%}
-    col.c-nom{width:12%}
+    col.c-prenom{width:12%}
+    col.c-nom{width:13%}
     col.c-fonction{width:14%}
     col.c-tel{width:11%}
-    col.c-email{width:14%}
+    col.c-email{width:13%}
     col.c-heure{width:7%}
-    col.c-sig{width:27%}
+    col.c-sig{width:26%}
     th{background:#0f2557;color:#fff;padding:7px 6px;text-align:left;font-size:9px;text-transform:uppercase;letter-spacing:.4px;white-space:nowrap;overflow:hidden}
+    thead{display:table-header-group}
+    tr{page-break-inside:avoid}
     td{padding:6px 6px;border-bottom:1px solid #e5e7eb;vertical-align:middle;overflow:hidden;word-break:break-word}
     tr:nth-child(even) td{background:#f8fafc}
     td img{max-height:42px;max-width:100%;display:block}
@@ -1382,10 +1384,15 @@ async function purgerPresencesOrphelines() {
 async function buildStats() {
   try {
     // Force fetch depuis le serveur (ignore le cache offline Firestore)
-    const snap = await db.collection('maphar_presences').get({source:'server'});
+    // Recharger les réunions ET les présences directement depuis Firestore
+    const [rSnap, snap] = await Promise.all([
+      db.collection('maphar_reunions').get({source:'server'}),
+      db.collection('maphar_presences').get({source:'server'})
+    ]);
+    const allReunions = rSnap.docs.map(d=>({id:d.id,...d.data()}));
     const all  = snap.docs.map(d=>d.data());
 
-    const totalR   = reunions.length;
+    const totalR   = allReunions.length;
     const totalP   = all.length;
     const moyP     = totalR ? (totalP / totalR).toFixed(1) : 0;
 
@@ -1481,8 +1488,8 @@ async function buildStats() {
       }).join('');
     }
 
-    // Par réunion
-    const parR = reunions.map(r => {
+    // Par réunion — utiliser allReunions rechargé depuis le serveur
+    const parR = allReunions.map(r => {
       const cnt = all.filter(p=>p.reunionId===r.id).length;
       const ds  = r.date ? new Date(r.date+'T00:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'short',year:'numeric'}) : '–';
       return {label: r.label, date: ds, cnt};

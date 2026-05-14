@@ -376,6 +376,11 @@ async function sha256(str) {
   return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
 }
 
+// Normalisation des noms : insensible aux accents, casse et espaces
+function normalizeName(s) {
+  return (s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/\s+/g,' ').trim();
+}
+
 let db = null;
 function loadFirebase() {
   return new Promise((resolve, reject) => {
@@ -590,12 +595,36 @@ function renderPresences(filter='') {
     return;
   }
 
+  // ── Détection des doublons mandant (même mandant déclaré par ≥2 porteurs)
+  const mandantMap = {};
+  presences.forEach(p => {
+    (p.procurations||[]).forEach(pr => {
+      const key = normalizeName(pr.mandant);
+      if (!mandantMap[key]) mandantMap[key] = [];
+      mandantMap[key].push((p.nom||'').toUpperCase()+' '+p.prenom);
+    });
+  });
+  const mandantsDoublons = new Set(Object.keys(mandantMap).filter(k => mandantMap[k].length > 1));
+
   tbody.innerHTML=list.map((p,i)=>{
     const h=p.dateSignature?new Date(p.dateSignature).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}):'–';
     const sigHtml=p.signature?`<img src="${p.signature}" style="height:34px;max-width:90px;border:1px solid #e2e8f0;border-radius:4px;background:#fff">`:'–';
-    const procList=p.procurations?.map(pr=>`<div style="font-size:10px;color:var(--orange)">• ${esc(pr.mandant)} (${esc(pr.officine||'')}${pr.numero?' n°'+esc(pr.numero):''})</div>`).join('')||'';
-    const statut=p.procurations?.length?`<span class="badge-proc">✋ + ${p.procurations.length} proc.</span>`:`<span class="badge-present">✅ Présent</span>`;
-    return `<tr>
+    const nProcs = p.procurations?.length||0;
+    // Vérifier si l'une des procurations de ce porteur est en doublon
+    const hasDoublon = (p.procurations||[]).some(pr => mandantsDoublons.has(normalizeName(pr.mandant)));
+    // Vérifier si ce porteur a plus d'1 procuration (violation de la règle)
+    const surLimit = nProcs > 1;
+    const procList=(p.procurations||[]).map(pr=>{
+      const isDbl = mandantsDoublons.has(normalizeName(pr.mandant));
+      return `<div style="font-size:10px;color:${isDbl?'#dc2626':'var(--orange)'}">• ${esc(pr.mandant)} (${esc(pr.officine||'')}${pr.numero?' n°'+esc(pr.numero):''}${isDbl?' ⚠️ doublon':''})</div>`;
+    }).join('');
+    let statut;
+    if (surLimit)      statut=`<span style="background:#fef2f2;color:#dc2626;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700">⚠️ ${nProcs} proc. (max 1)</span>`;
+    else if (hasDoublon) statut=`<span style="background:#fff7ed;color:#c2410c;padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700">⚠️ Doublon proc.</span>`;
+    else if (nProcs)   statut=`<span class="badge-proc">✋ + ${nProcs} proc.</span>`;
+    else               statut=`<span class="badge-present">✅ Présent</span>`;
+    const rowBg = (surLimit||hasDoublon) ? 'background:#fff5f5' : '';
+    return `<tr style="${rowBg}">
       <td style="color:var(--grey);font-weight:600">${i+1}</td>
       <td><strong>${esc((p.nom||'').toUpperCase())}</strong></td>
       <td>${esc(p.prenom)}</td>
@@ -625,7 +654,10 @@ function renderPresences(filter='') {
   if (allProcs.length) {
     document.getElementById('procBody').innerHTML=allProcs.map((pr,i)=>{
       const h=pr.heure?new Date(pr.heure).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}):'–';
-      return `<tr><td>${i+1}</td><td><strong>${esc(pr.mandant)}</strong></td><td>${esc(pr.officine)}${pr.numero?' — n°'+esc(pr.numero):''}</td><td>${esc(pr.mandataire)}</td><td style="color:var(--grey)">${h}</td></tr>`;
+      const isDbl = mandantsDoublons.has(normalizeName(pr.mandant));
+      const rowStyle = isDbl ? 'background:#fef2f2;color:#dc2626' : '';
+      const flag = isDbl ? ' <strong title="Ce mandant apparaît chez plusieurs porteurs">⚠️</strong>' : '';
+      return `<tr style="${rowStyle}"><td>${i+1}</td><td><strong>${esc(pr.mandant)}</strong>${flag}</td><td>${esc(pr.officine)}${pr.numero?' — n°'+esc(pr.numero):''}</td><td>${esc(pr.mandataire)}</td><td style="color:var(--grey)">${h}</td></tr>`;
     }).join('');
   }
 }
