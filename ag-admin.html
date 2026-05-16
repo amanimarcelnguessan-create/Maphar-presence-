@@ -159,6 +159,7 @@
   <nav class="tabs no-print">
     <button class="tab active" id="tabBtn-ag"        onclick="switchTab('ag')">📅 Sessions &amp; QR</button>
     <button class="tab"        id="tabBtn-presences" onclick="switchTab('presences')">👥 Présences</button>
+    <button class="tab"        id="tabBtn-membres"   onclick="switchTab('membres')">👤 Membres BEX</button>
     <button class="tab"        id="tabBtn-historique"onclick="switchTab('historique')">🗂️ Historique</button>
     <button class="tab"        id="tabBtn-stats"     onclick="switchTab('stats')">📊 Statistiques</button>
   </nav>
@@ -301,6 +302,37 @@
     </div><!-- /tab-presences -->
 
     <!-- TAB HISTORIQUE -->
+    <!-- TAB MEMBRES BEX -->
+    <div id="tab-membres" class="panel">
+      <div class="card no-print">
+        <div class="card-title">➕ Ajouter un membre BEX</div>
+        <div class="f-grid">
+          <div class="f-group"><label>NOM *</label><input type="text" id="mNom" placeholder="NOM DE FAMILLE" style="text-transform:uppercase"></div>
+          <div class="f-group"><label>Prénom *</label><input type="text" id="mPrenom" placeholder="Prénom"></div>
+          <div class="f-group"><label>Fonction *</label><input type="text" id="mFonction" placeholder="Ex : Président, Trésorière…"></div>
+          <div class="f-group"><label>Téléphone *</label><input type="tel" id="mTel" placeholder="07 00 00 00 00"></div>
+          <div class="f-group"><label>Numéro d'ordre</label><input type="text" id="mNumOrdre" placeholder="Ex : PH-2024-0123"></div>
+          <div class="f-group"><label>Officine / Institution</label><input type="text" id="mOfficine" placeholder="Pharmacie…"></div>
+          <div class="f-group" style="grid-column:1/-1"><label>Email</label><input type="email" id="mEmail" placeholder="email@exemple.com"></div>
+        </div>
+        <div style="margin-top:14px"><button class="btn btn-primary" onclick="addMembreBex()">➕ Ajouter le membre</button></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">👥 Liste des membres du Bureau Exécutif</div>
+        <div class="tbl-actions no-print">
+          <input class="search-input" id="mSearch" placeholder="🔍 Rechercher…" oninput="filterMembresBex()">
+          <span class="count-pill" id="mCount">0 membre</span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>#</th><th>NOM</th><th>Prénom</th><th>Fonction</th><th>Téléphone</th><th>N° Ordre</th><th>Officine</th><th>Email</th><th class="no-print">Actions</th></tr></thead>
+            <tbody id="mBody"><tr><td colspan="9"><div class="empty-tbl"><div class="e-icon">👥</div><div class="e-title">Chargement…</div></div></td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div><!-- /tab-membres -->
+
     <div id="tab-historique" class="panel">
       <div class="card">
         <div class="card-title">🗂️ Historique des sessions AG</div>
@@ -449,13 +481,14 @@ let sessions=[], selectedS=null, presences=[], presenceUnsub=null, autoTimer=nul
 
 // ─── Tabs
 function switchTab(name) {
-  ['ag','presences','historique','stats'].forEach(n => {
+  ['ag','presences','membres','historique','stats'].forEach(n => {
     document.getElementById('tab-'+n).classList.toggle('active',n===name);
     document.getElementById('tabBtn-'+n).classList.toggle('active',n===name);
   });
   if (name==='presences') fillRSelect();
   if (name==='historique') buildHistorique();
   if (name==='stats') buildStats();
+  if (name==='membres') loadMembresBex();
   if (name==='ag') {
     if (presenceUnsub) { presenceUnsub(); presenceUnsub=null; }
     if (autoTimer) { clearInterval(autoTimer); autoTimer=null; }
@@ -919,6 +952,95 @@ function toggleDark() {
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 function toast(msg,type=''){const el=document.getElementById('toast');el.textContent=msg;el.className='toast'+(type?' '+type:'')+' show';setTimeout(()=>el.classList.remove('show'),3000);}
 document.getElementById('editBg').addEventListener('click',e=>{if(e.target===e.currentTarget)closeModal();});
+
+// ──────────────────────────────────────────
+// MEMBRES BEX
+// ──────────────────────────────────────────
+let membresBex = [];
+
+async function loadMembresBex() {
+  try {
+    const snap = await db.collection('maphar_ag_membres').orderBy('nom','asc').get({source:'server'});
+    membresBex = snap.docs.map(d=>({id:d.id,...d.data()}));
+    renderMembresBex();
+  } catch(e) { toast('Erreur chargement membres','err'); }
+}
+
+function renderMembresBex(filter='') {
+  const f    = filter.toLowerCase();
+  const list = membresBex.filter(m=>!f||(m.nom+' '+m.prenom+' '+m.fonction+' '+(m.numero||'')).toLowerCase().includes(f));
+  document.getElementById('mCount').textContent = list.length+' membre'+(list.length>1?'s':'');
+  const tbody = document.getElementById('mBody');
+  if (!list.length) {
+    tbody.innerHTML = `<tr><td colspan="9"><div class="empty-tbl"><div class="e-icon">👥</div><div class="e-title">${membresBex.length?'Aucun résultat':'Aucun membre BEX enregistré'}</div></div></td></tr>`;
+    return;
+  }
+  tbody.innerHTML = list.map((m,i)=>`<tr>
+    <td style="color:var(--grey);font-weight:600">${i+1}</td>
+    <td><strong>${esc((m.nom||'').toUpperCase())}</strong></td>
+    <td>${esc(m.prenom||'')}</td>
+    <td>${esc(m.fonction||'–')}</td>
+    <td>${esc(m.telephone||'–')}</td>
+    <td style="color:var(--grey)">${esc(m.numero||'–')}</td>
+    <td style="color:var(--grey)">${esc(m.officine||'–')}</td>
+    <td style="color:var(--grey)">${esc(m.email||'–')}</td>
+    <td class="no-print"><div style="display:flex;gap:4px">
+      <button class="btn btn-outline btn-xs" onclick="editMembreBex('${m.id}')">✏️</button>
+      <button class="btn btn-red btn-xs" onclick="delMembreBex('${m.id}')">🗑️</button>
+    </div></td>
+  </tr>`).join('');
+}
+
+function filterMembresBex() { renderMembresBex(document.getElementById('mSearch').value); }
+
+async function addMembreBex() {
+  const nom      = document.getElementById('mNom').value.trim().toUpperCase();
+  const prenom   = document.getElementById('mPrenom').value.trim();
+  const fonction = document.getElementById('mFonction').value.trim();
+  const telephone= document.getElementById('mTel').value.trim();
+  const numero   = document.getElementById('mNumOrdre').value.trim();
+  const officine = document.getElementById('mOfficine').value.trim();
+  const email    = document.getElementById('mEmail').value.trim();
+  if (!nom||!prenom||!fonction||!telephone) { toast('Champs obligatoires manquants (NOM, Prénom, Fonction, Téléphone)','err'); return; }
+  try {
+    await db.collection('maphar_ag_membres').add({
+      nom, prenom, fonction, telephone, numero, officine, email,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    ['mNom','mPrenom','mFonction','mTel','mNumOrdre','mOfficine','mEmail'].forEach(id=>document.getElementById(id).value='');
+    toast('Membre BEX ajouté ✅','ok');
+    await loadMembresBex();
+  } catch(e) { console.error(e); toast('Erreur d\'ajout','err'); }
+}
+
+async function editMembreBex(id) {
+  const m = membresBex.find(x=>x.id===id);
+  if (!m) return;
+  const newFonction = prompt('Fonction :', m.fonction||'');
+  if (newFonction === null) return;
+  const newTel  = prompt('Téléphone :', m.telephone||'');
+  if (newTel === null) return;
+  const newNum  = prompt('Numéro d\'ordre :', m.numero||'');
+  if (newNum === null) return;
+  try {
+    await db.collection('maphar_ag_membres').doc(id).update({
+      fonction: newFonction.trim(), telephone: newTel.trim(), numero: newNum.trim()
+    });
+    toast('Membre mis à jour ✅','ok');
+    await loadMembresBex();
+  } catch(e) { toast('Erreur de mise à jour','err'); }
+}
+
+async function delMembreBex(id) {
+  const m = membresBex.find(x=>x.id===id);
+  const label = m ? `${(m.nom||'').toUpperCase()} ${m.prenom||''}`.trim() : 'ce membre';
+  if (!confirm(`Supprimer "${label}" de la liste des membres BEX ?`)) return;
+  try {
+    await db.collection('maphar_ag_membres').doc(id).delete();
+    toast(`"${label}" supprimé ✅`,'ok');
+    await loadMembresBex();
+  } catch(e) { toast('Erreur de suppression','err'); }
+}
 </script>
 </body>
 </html>
