@@ -61,13 +61,14 @@
     .f-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
     @media(max-width:640px){.f-grid{grid-template-columns:1fr}}
     .f-group label{display:block;font-size:11px;font-weight:700;color:var(--grey);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px}
-    .f-group input,.f-group select{width:100%;padding:10px 13px;border:1.5px solid var(--border);border-radius:11px;font-family:inherit;font-size:13px;color:var(--text);background:#fafbff;outline:none;transition:border-color .2s}
-    .f-group input:focus,.f-group select:focus{border-color:var(--blue2);background:#fff;box-shadow:0 0 0 3px rgba(33,86,212,.08)}
+    .f-group input,.f-group select{width:100%;padding:10px 13px;border:1.5px solid var(--border);border-radius:11px;font-family:inherit;font-size:13px;color:var(--text);background:#fafbff;outline:none;transition:border-color .2s,box-shadow .2s}
+    .f-group input:focus,.f-group select:focus{border-color:var(--blue2);background:#fff;box-shadow:0 0 0 3px rgba(33,86,212,.1)}
 
     /* BUTTONS */
-    .btn{display:inline-flex;align-items:center;gap:6px;padding:9px 16px;border:none;border-radius:10px;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;transition:all .15s}
-    .btn-primary{background:var(--blue);color:#fff}.btn-primary:hover{background:var(--navy)}
-    .btn-green{background:var(--green);color:#fff}.btn-green:hover{background:#047857}
+    .btn{display:inline-flex;align-items:center;gap:6px;padding:9px 16px;border:none;border-radius:10px;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer;transition:all .15s;letter-spacing:.2px}
+    .btn:active{transform:scale(.97)}
+    .btn-primary{background:var(--blue);color:#fff}.btn-primary:hover{background:var(--navy);box-shadow:0 4px 12px rgba(22,65,164,.3)}
+    .btn-green{background:var(--green);color:#fff}.btn-green:hover{background:#047857;box-shadow:0 4px 12px rgba(5,150,105,.3)}
     .btn-outline{background:#fff;color:var(--blue);border:2px solid var(--blue)}.btn-outline:hover{background:var(--sky)}
     .btn-red{background:var(--red);color:#fff}.btn-red:hover{background:#b91c1c}
     .btn-wa{background:#25D366;color:#fff}.btn-wa:hover{background:#128C7E}
@@ -99,11 +100,11 @@
     .table-wrap{overflow-x:auto;border-radius:13px;border:1px solid var(--border)}
     table{width:100%;border-collapse:collapse;font-size:12px}
     thead{background:#f8fafc}
-    thead th{padding:10px 12px;text-align:left;font-size:10px;font-weight:700;color:var(--grey);text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border);white-space:nowrap}
-    tbody tr{border-bottom:1px solid #f1f5f9;transition:background .1s}
-    tbody tr:hover{background:#fafbff}
+    thead th{padding:10px 12px;text-align:left;font-size:10px;font-weight:700;color:var(--grey);text-transform:uppercase;letter-spacing:.6px;border-bottom:1px solid var(--border);white-space:nowrap}
+    tbody tr{border-bottom:1px solid #f1f5f9;transition:background .15s}
+    tbody tr:hover{background:#f8fafc}
     tbody tr:last-child{border-bottom:none}
-    tbody td{padding:10px 12px;color:#334155;vertical-align:middle}
+    tbody td{padding:11px 12px;color:#334155;vertical-align:middle;font-size:12.5px}
 
     /* PROCURATION BADGE */
     .badge-proc{display:inline-block;background:#fef3c7;color:#92400e;border:1px solid #fbbf24;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:700}
@@ -125,9 +126,10 @@
     /* STATS */
     .kpi-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:18px}
     @media(max-width:640px){.kpi-grid{grid-template-columns:1fr 1fr}}
-    .kpi{background:var(--card);border-radius:14px;padding:18px;text-align:center;box-shadow:0 1px 6px rgba(15,37,87,.07)}
-    .kpi-val{font-size:32px;font-weight:900}
-    .kpi-label{font-size:11px;color:var(--grey);margin-top:4px}
+    .kpi{background:var(--card);border-radius:16px;padding:20px 16px;text-align:center;box-shadow:0 1px 6px rgba(15,37,87,.07);border:1px solid var(--border);transition:box-shadow .2s}
+    .kpi:hover{box-shadow:0 4px 16px rgba(15,37,87,.12)}
+    .kpi-val{font-size:34px;font-weight:900;line-height:1;letter-spacing:-1px}
+    .kpi-label{font-size:10.5px;font-weight:700;color:var(--grey);margin-top:6px;text-transform:uppercase;letter-spacing:.5px}
 
     @media print{.no-print{display:none!important}}
   </style>
@@ -204,32 +206,20 @@
             <div class="msg">Sélectionnez une session<br>pour générer son QR code</div>
           </div>
           <div id="qrReady" style="display:none">
-            <!-- Deux QR côte à côte -->
-            <div style="display:flex;gap:20px;flex-wrap:wrap;justify-content:center">
-              <!-- QR BEX -->
-              <div style="flex:1;min-width:180px;text-align:center">
-                <div style="background:#2d7a3a;color:#fff;font-size:10px;font-weight:700;letter-spacing:1px;padding:5px 10px;border-radius:8px 8px 0 0;text-transform:uppercase">Bureau Exécutif</div>
-                <div style="border:2px solid #2d7a3a;border-top:none;border-radius:0 0 8px 8px;padding:10px">
-                  <img id="qrImgBex" src="" alt="QR BEX" width="175" height="175">
-                  <div style="font-size:10px;color:var(--grey);margin-top:5px">Membres BEX — sélection + signature</div>
-                </div>
-              </div>
-              <!-- QR Autres participants -->
-              <div style="flex:1;min-width:180px;text-align:center">
-                <div style="background:#0f2557;color:#fff;font-size:10px;font-weight:700;letter-spacing:1px;padding:5px 10px;border-radius:8px 8px 0 0;text-transform:uppercase">Autres participants</div>
-                <div style="border:2px solid #0f2557;border-top:none;border-radius:0 0 8px 8px;padding:10px">
-                  <img id="qrImg" src="" alt="QR Autres" width="175" height="175">
-                  <div style="font-size:10px;color:var(--grey);margin-top:5px">Membres & invités — formulaire complet</div>
-                </div>
+            <!-- QR unique — tous les membres -->
+            <div style="text-align:center">
+              <div style="background:#0f2557;color:#fff;font-size:10px;font-weight:700;letter-spacing:1px;padding:5px 10px;border-radius:8px 8px 0 0;text-transform:uppercase;display:inline-block;min-width:220px">Assemblée Générale</div>
+              <div style="border:2px solid #0f2557;border-top:none;border-radius:0 0 12px 12px;padding:14px;display:inline-block;min-width:220px;background:#fff">
+                <img id="qrImg" src="" alt="QR AG" width="200" height="200">
+                <div style="font-size:10px;color:var(--grey);margin-top:6px">Tous les membres — formulaire complet</div>
               </div>
             </div>
-            <div style="text-align:center;margin-top:12px">
+            <div style="text-align:center;margin-top:14px">
               <div style="font-size:14px;font-weight:700;color:var(--navy)" id="qrName"></div>
               <div style="font-size:11px;color:var(--grey);margin-top:2px" id="qrDate"></div>
             </div>
             <div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap;justify-content:center" class="no-print">
-              <button class="btn btn-outline btn-sm" style="border-color:#2d7a3a;color:#2d7a3a" onclick="printQR('bex')">🖨️ QR Bureau Exécutif</button>
-              <button class="btn btn-outline btn-sm" onclick="printQR('autre')">🖨️ QR Autres participants</button>
+              <button class="btn btn-outline btn-sm" onclick="printQR()">🖨️ Imprimer le QR</button>
               <button class="btn btn-primary btn-sm" onclick="goToPresences()">👥 Présences</button>
               <button class="btn btn-wa btn-sm" onclick="shareWhatsApp()">📱 WhatsApp</button>
             </div>
@@ -254,7 +244,7 @@
       <!-- KPIs -->
       <div class="kpi-grid" id="kpiBar" style="display:none">
         <div class="kpi"><div class="kpi-val" id="k-presents" style="color:var(--green)">0</div><div class="kpi-label">Présents physiques</div></div>
-        <div class="kpi"><div class="kpi-val" id="k-procurations" style="color:var(--orange)">0</div><div class="kpi-label">Procurations reçues</div></div>
+        <div class="kpi"><div class="kpi-val" id="k-procurations" style="color:var(--orange)">0</div><div class="kpi-label">Pouvoirs de représentation</div></div>
         <div class="kpi"><div class="kpi-val" id="k-total" style="color:var(--navy)">0</div><div class="kpi-label">Total voix représentées</div></div>
       </div>
 
@@ -273,7 +263,7 @@
               <tr>
                 <th>#</th><th>NOM</th><th>Prénom</th><th>Officine / Institution</th>
                 <th>Téléphone</th><th>Email</th><th>Heure</th>
-                <th>Statut</th><th>Procuration pour</th><th>Signature</th>
+                <th>Statut</th><th>Pouvoir de représentation</th><th>Signature</th>
                 <th class="no-print">Actions</th>
               </tr>
             </thead>
@@ -289,7 +279,7 @@
 
       <!-- Section Procurations -->
       <div class="card" id="procCard" style="display:none">
-        <div class="card-title">📜 Registre des procurations</div>
+        <div class="card-title">📜 Registre des pouvoirs de représentation</div>
         <div class="table-wrap">
           <table>
             <thead>
@@ -366,7 +356,7 @@
       <div class="kpi-grid" id="statsKPIs">
         <div class="kpi"><div class="kpi-val" id="st-sessions" style="color:var(--blue)">–</div><div class="kpi-label">Sessions AG tenues</div></div>
         <div class="kpi"><div class="kpi-val" id="st-presences" style="color:var(--green)">–</div><div class="kpi-label">Présences enregistrées</div></div>
-        <div class="kpi"><div class="kpi-val" id="st-procurations" style="color:var(--orange)">–</div><div class="kpi-label">Procurations totales</div></div>
+        <div class="kpi"><div class="kpi-val" id="st-procurations" style="color:var(--orange)">–</div><div class="kpi-label">Pouvoirs de représentation</div></div>
       </div>
       <div class="card">
         <div class="card-title">📅 Participation par session</div>
@@ -567,14 +557,12 @@ function buildQrUrl(data) { return `https://api.qrserver.com/v1/create-qr-code/?
 
 function renderQR() {
   if (!selectedS) return;
-  const urlBex   = `${CONFIG.baseUrl}/ag-scan-bex.html?session=${selectedS.id}`;
-  const urlAutre = buildScanUrl(selectedS.id);
+  const url = buildScanUrl(selectedS.id);
   document.getElementById('qrEmpty').style.display='none';
   document.getElementById('qrReady').style.display='block';
-  document.getElementById('qrImgBex').src=buildQrUrl(urlBex);
-  document.getElementById('qrImg').src=buildQrUrl(urlAutre);
+  document.getElementById('qrImg').src=buildQrUrl(url);
   document.getElementById('qrName').textContent=selectedS.label||'Session AG MAPHAR';
-  document.getElementById('qrUrl').textContent=urlAutre;
+  document.getElementById('qrUrl').textContent=url;
   const ds=selectedS.date?new Date(selectedS.date+'T00:00:00').toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'}):'';
   document.getElementById('qrDate').textContent=ds+(selectedS.lieu?' · 📍'+selectedS.lieu:'');
 }
@@ -749,7 +737,7 @@ function exportCSV() {
   if (!presences.length){toast('Aucune donnée','err');return;}
   const sid=document.getElementById('rSelect').value;
   const session=sessions.find(s=>s.id===sid);
-  const headers=['#','NOM','Prénom','Officine / Institution','Téléphone','Email','Heure','Procurations détenues'];
+  const headers=['#','NOM','Prénom','Officine / Institution','Téléphone','Email','Heure','Pouvoirs de représentation détenus'];
   const rows=presences.map((p,i)=>{
     const h=p.dateSignature?new Date(p.dateSignature).toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}):'';
     const procs=(p.procurations||[]).map(pr=>pr.mandant+(pr.officine?' ('+pr.officine+')':'')).join(' | ');
@@ -817,7 +805,7 @@ function printPresences() {
   const allProcs=[];
   presences.forEach(p=>{ (p.procurations||[]).forEach(pr=>{ allProcs.push({...pr,mandataire:(p.nom||'').toUpperCase()+' '+p.prenom}); }); });
   const procSection=allProcs.length?`
-    <h3 style="font-size:13px;font-weight:900;color:#0f2557;margin:24px 0 10px;border-bottom:2px solid #0f2557;padding-bottom:6px">📜 REGISTRE DES PROCURATIONS (${allProcs.length})</h3>
+    <h3 style="font-size:13px;font-weight:900;color:#0f2557;margin:24px 0 10px;border-bottom:2px solid #0f2557;padding-bottom:6px">📜 REGISTRE DES POUVOIRS DE REPRÉSENTATION (${allProcs.length})</h3>
     <table style="width:100%;border-collapse:collapse;font-size:10px">
       <thead><tr style="background:#0f2557;color:#fff"><th style="padding:6px">Mandant (absent)</th><th>Officine / N°</th><th>Mandataire (présent)</th></tr></thead>
       <tbody>${allProcs.map((pr,i)=>`<tr style="border-bottom:1px solid #e5e7eb"><td style="padding:5px"><strong>${esc(pr.mandant)}</strong></td><td>${esc(pr.officine||'')}${pr.numero?' — n°'+esc(pr.numero):''}</td><td>${esc(pr.mandataire)}</td></tr>`).join('')}</tbody>
@@ -849,16 +837,16 @@ function printPresences() {
   <div class="meta">📅 ${ds}${session?.lieu?' · 📍'+session.lieu:''} &nbsp;|&nbsp; ${esc(session?.label)}</div>
   <div class="summary">
     <span>✅ Présents physiques : <strong>${physiques}</strong></span>
-    <span>📜 Procurations : <strong>${totalProcs}</strong></span>
+    <span>📜 Pouvoirs de représentation : <strong>${totalProcs}</strong></span>
     <span>🗳️ Total voix représentées : <strong>${physiques+totalProcs}</strong></span>
   </div>
   <table>
     <colgroup><col style="width:3%"><col style="width:11%"><col style="width:10%"><col style="width:15%"><col style="width:10%"><col style="width:8%"><col style="width:18%"><col style="width:25%"></colgroup>
-    <thead><tr><th>#</th><th>NOM</th><th>Prénom</th><th>Officine / Institution</th><th>Téléphone</th><th>Heure</th><th>Procurations reçues</th><th>Signature</th></tr></thead>
+    <thead><tr><th>#</th><th>NOM</th><th>Prénom</th><th>Officine / Institution</th><th>Téléphone</th><th>Heure</th><th>Pouvoirs de représentation</th><th>Signature</th></tr></thead>
     <tbody>${rows}</tbody>
   </table>
   ${procSection}
-  <div class="foot"><span>Total présents : <strong>${physiques}</strong> · Procurations : <strong>${totalProcs}</strong> · Voix : <strong>${physiques+totalProcs}</strong></span><span>Édité le ${new Date().toLocaleDateString('fr-FR')}</span></div>
+  <div class="foot"><span>Total présents : <strong>${physiques}</strong> · Pouvoirs de représentation : <strong>${totalProcs}</strong> · Voix : <strong>${physiques+totalProcs}</strong></span><span>Édité le ${new Date().toLocaleDateString('fr-FR')}</span></div>
   <div class="sigs"><div class="sig-line">Le Président</div><div class="sig-line">Le Secrétaire Général</div></div>
   <script>window.onload=()=>window.print()<\/script></body></html>`);
   w.document.close();
@@ -870,7 +858,7 @@ function shareWhatsApp() {
   const url=buildScanUrl(selectedS.id);
   const ds=selectedS.date?new Date(selectedS.date+'T00:00:00').toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'}):'';
   const lieu=selectedS.lieu?`\n📍 Lieu : ${selectedS.lieu}`:'';
-  const msg=`📋 *MAPHAR – Assemblée Générale Ordinaire*\n\n*${selectedS.label}*\n📅 ${ds}${lieu}\n\n✍️ Cliquez sur le lien pour enregistrer votre présence (et vos procurations) :\n${url}`;
+  const msg=`📋 *MAPHAR – Assemblée Générale Ordinaire*\n\n*${selectedS.label}*\n📅 ${ds}${lieu}\n\n✍️ Cliquez sur le lien pour enregistrer votre présence (et vos pouvoirs de représentation) :\n${url}`;
   window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`,'_blank');
 }
 
