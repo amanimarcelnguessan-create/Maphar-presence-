@@ -140,8 +140,9 @@
         <div class="hint" id="h-telephone">Ce champ est obligatoire</div>
       </div>
       <div class="field">
-        <label>Email</label>
+        <label>Email <span style="color:#dc2626">*</span></label>
         <input type="email" id="f-email" placeholder="votre@email.com" autocomplete="email">
+        <div class="hint" id="h-email">Ce champ est obligatoire</div>
       </div>
 
       <div class="divider"></div>
@@ -522,6 +523,7 @@ async function handleSubmit() {
     validate('f-prenom','h-prenom'),
     validate('f-officine','h-officine'),
     validate('f-telephone','h-telephone'),
+    validate('f-email','h-email'),
   ].every(Boolean);
 
   // Validation du numéro d'ordre si pouvoir de représentation coché
