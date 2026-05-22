@@ -238,7 +238,7 @@
 <div class="card">
   <div class="card-header">
     <div class="h-title">📋 Feuille de Présence</div>
-    <div class="h-badge">ASSEMBLÉE GÉNÉRALE ORDINAIRE</div>
+    <div class="h-badge" id="agTypeBadge">ASSEMBLÉE GÉNÉRALE</div>
     <div class="meeting-strip">
       <div class="m-name" id="mName">Chargement...</div>
       <div class="m-date" id="mDate"></div>
@@ -449,6 +449,7 @@ async function init() {
     const typeLabel = typeMap[d.typeAG] || d.typeAG || 'Assemblée Générale';
     document.getElementById('mName').textContent = d.label||typeLabel;
     document.getElementById('tagType').textContent = (typeLabel+' – Présences');
+    document.getElementById('agTypeBadge').textContent = typeLabel.toUpperCase();
     document.getElementById('pageFooter').textContent = 'MAPHAR © 2026 – '+typeLabel;
     document.getElementById('w-banner').textContent = 'MAPHAR · '+typeLabel;
     if (d.date) {
@@ -474,6 +475,7 @@ async function init() {
         const typeLabel2 = typeMap2[d2.typeAG] || d2.typeAG || 'Assemblée Générale';
         document.getElementById('mName').textContent = d2.label||typeLabel2;
         document.getElementById('tagType').textContent = (typeLabel2+' – Présences');
+        document.getElementById('agTypeBadge').textContent = typeLabel2.toUpperCase();
         document.getElementById('pageFooter').textContent = 'MAPHAR © 2026 – '+typeLabel2;
         document.getElementById('w-banner').textContent = 'MAPHAR · '+typeLabel2;
         if (d2.date) {
