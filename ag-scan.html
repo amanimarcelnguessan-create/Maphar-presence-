@@ -80,28 +80,149 @@
 
     .page-footer{color:rgba(255,255,255,.35);font-size:11px;text-align:center;margin-top:20px}
 
-    /* ── WELCOME SCREEN PREMIUM ── */
-    #welcomeOverlay{position:fixed;inset:0;z-index:1000;background:linear-gradient(160deg,#0a1a3e 0%,#0f2557 40%,#1641a4 100%);display:none;flex-direction:column;align-items:center;justify-content:center;overflow:hidden}
+    /* ── WELCOME SCREEN MAPHAR ── */
+    /* Couleurs charte MAPHAR tirées du logo :
+       Vert foncé  : #2A6B3C
+       Rouge/brun  : #8B1A1A
+       Or/jaune    : #C8A020
+       Blanc       : #FFFFFF
+       Vert clair  : #4A9B5F  */
+    #welcomeOverlay{
+      position:fixed;inset:0;z-index:1000;
+      background:linear-gradient(170deg,#1a4a28 0%,#2A6B3C 45%,#1e5530 100%);
+      display:none;flex-direction:column;align-items:center;justify-content:center;
+      overflow:hidden;
+    }
     #welcomeOverlay.show{display:flex}
-    .w-card{background:rgba(255,255,255,.07);backdrop-filter:blur(18px);border:1px solid rgba(255,255,255,.18);border-radius:28px;padding:36px 28px 32px;max-width:400px;width:90%;text-align:center;animation:slideUp .7s cubic-bezier(.22,1,.36,1) both}
-    @keyframes slideUp{from{opacity:0;transform:translateY(60px)}to{opacity:1;transform:translateY(0)}}
-    .w-seal{width:72px;height:72px;background:linear-gradient(135deg,#d4a017,#f4c842);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;font-size:36px;animation:pulse-gold 2s ease-in-out infinite;box-shadow:0 0 0 0 rgba(212,160,23,.6)}
-    @keyframes pulse-gold{0%,100%{box-shadow:0 0 0 0 rgba(212,160,23,.5)}50%{box-shadow:0 0 0 16px rgba(212,160,23,0)}}
-    .w-label{font-size:10px;font-weight:800;letter-spacing:3px;color:rgba(255,255,255,.5);text-transform:uppercase;margin-bottom:8px}
-    .w-title{font-size:22px;font-weight:900;color:#fff;line-height:1.2;margin-bottom:6px}
-    .w-name{font-size:19px;font-weight:700;color:#f4c842;margin-bottom:20px;line-height:1.2}
-    .w-divider{width:48px;height:2px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.3),transparent);margin:0 auto 20px}
-    .w-body{font-size:14px;color:rgba(255,255,255,.82);line-height:1.7;margin-bottom:22px}
-    .w-meta{display:flex;flex-direction:column;gap:8px;margin-bottom:22px}
-    .w-chip{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:20px;padding:7px 16px;font-size:12px;color:rgba(255,255,255,.9);font-weight:600;display:flex;align-items:center;gap:6px;justify-content:center}
-    .w-chip.gold{background:rgba(212,160,23,.2);border-color:rgba(212,160,23,.4);color:#f4c842}
-    .w-chip.proc{background:rgba(249,115,22,.15);border-color:rgba(249,115,22,.3);color:#fed7aa}
-    .w-close{opacity:0;transition:opacity .5s;margin-top:4px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);border-radius:12px;padding:11px 28px;color:#fff;font-family:'Outfit',sans-serif;font-size:13px;font-weight:700;cursor:pointer;width:100%}
+
+    /* Motif décoratif cercles en arrière-plan */
+    #welcomeOverlay::before{
+      content:'';position:absolute;inset:0;
+      background:
+        radial-gradient(circle at 15% 20%, rgba(200,160,32,.18) 0%, transparent 50%),
+        radial-gradient(circle at 85% 80%, rgba(139,26,26,.25) 0%, transparent 50%),
+        radial-gradient(circle at 50% 50%, rgba(255,255,255,.04) 0%, transparent 70%);
+      pointer-events:none;
+    }
+
+    .w-card{
+      position:relative;
+      background:rgba(255,255,255,.10);
+      backdrop-filter:blur(22px);
+      border:1px solid rgba(200,160,32,.35);
+      border-radius:24px;
+      padding:32px 26px 28px;
+      max-width:390px;width:92%;
+      text-align:center;
+      animation:slideUp .65s cubic-bezier(.22,1,.36,1) both;
+      box-shadow:0 24px 60px rgba(0,0,0,.35), 0 0 0 1px rgba(200,160,32,.15) inset;
+    }
+    @keyframes slideUp{from{opacity:0;transform:translateY(64px) scale(.96)}to{opacity:1;transform:translateY(0) scale(1)}}
+
+    /* Logo MAPHAR centré avec halo */
+    .w-logo-wrap{
+      width:80px;height:80px;
+      background:#fff;
+      border-radius:50%;
+      display:flex;align-items:center;justify-content:center;
+      margin:0 auto 18px;
+      box-shadow:0 0 0 4px rgba(200,160,32,.5), 0 0 28px rgba(200,160,32,.4);
+      animation:pulse-maphar 2.4s ease-in-out infinite;
+      overflow:hidden;
+      padding:4px;
+    }
+    .w-logo-wrap img{width:68px;height:68px;object-fit:contain;border-radius:50%}
+    @keyframes pulse-maphar{
+      0%,100%{box-shadow:0 0 0 4px rgba(200,160,32,.5), 0 0 0 0 rgba(200,160,32,.3)}
+      50%{box-shadow:0 0 0 4px rgba(200,160,32,.7), 0 0 0 14px rgba(200,160,32,0)}
+    }
+
+    /* Banderole rouge MAPHAR */
+    .w-banner{
+      display:inline-block;
+      background:linear-gradient(90deg,#8B1A1A,#a52020,#8B1A1A);
+      color:#fff;
+      font-size:9px;font-weight:900;letter-spacing:3.5px;
+      text-transform:uppercase;
+      padding:5px 18px;
+      border-radius:20px;
+      margin-bottom:14px;
+      border:1px solid rgba(255,255,255,.2);
+    }
+
+    .w-title{
+      font-size:13px;font-weight:600;
+      color:rgba(255,255,255,.7);
+      letter-spacing:.5px;
+      margin-bottom:4px;
+      text-transform:uppercase;
+    }
+    .w-name{
+      font-size:22px;font-weight:900;
+      color:#C8A020;
+      margin-bottom:4px;line-height:1.2;
+      text-shadow:0 2px 12px rgba(200,160,32,.4);
+    }
+
+    /* Ligne dorée séparatrice */
+    .w-divider{
+      width:60px;height:2px;
+      background:linear-gradient(90deg,transparent,#C8A020,transparent);
+      margin:14px auto 16px;
+    }
+
+    .w-body{
+      font-size:13.5px;color:rgba(255,255,255,.88);
+      line-height:1.75;margin-bottom:18px;
+    }
+    .w-body strong{color:#fff;font-weight:700}
+
+    .w-meta{display:flex;flex-direction:column;gap:7px;margin-bottom:20px}
+
+    /* Chip heure → vert MAPHAR */
+    .w-chip{
+      background:rgba(42,107,60,.5);
+      border:1px solid rgba(74,155,95,.5);
+      border-radius:20px;padding:7px 14px;
+      font-size:12px;color:rgba(255,255,255,.95);font-weight:600;
+      display:flex;align-items:center;gap:6px;justify-content:center;
+    }
+    /* Chip session → or */
+    .w-chip.gold{
+      background:rgba(200,160,32,.2);
+      border-color:rgba(200,160,32,.45);
+      color:#e8c840;
+    }
+    /* Chip pouvoirs → rouge MAPHAR */
+    .w-chip.proc{
+      background:rgba(139,26,26,.3);
+      border-color:rgba(200,80,80,.4);
+      color:#ffb3b3;
+    }
+
+    /* Bouton fermer → rouge MAPHAR */
+    .w-close{
+      opacity:0;transition:opacity .6s ease;
+      margin-top:4px;
+      background:linear-gradient(135deg,#8B1A1A,#a52020);
+      border:1px solid rgba(255,255,255,.2);
+      border-radius:12px;padding:12px 28px;
+      color:#fff;font-family:'Outfit',sans-serif;
+      font-size:13px;font-weight:700;cursor:pointer;width:100%;
+      box-shadow:0 4px 16px rgba(139,26,26,.4);
+      letter-spacing:.5px;
+    }
     .w-close.visible{opacity:1}
-    .w-close:hover{background:rgba(255,255,255,.2)}
+    .w-close:hover{background:linear-gradient(135deg,#a52020,#c02828);transform:translateY(-1px)}
+    .w-close:active{transform:translateY(0)}
+
+    /* Confettis aux couleurs MAPHAR */
     .confetti-wrap{position:fixed;inset:0;pointer-events:none;z-index:999}
-    .c{position:absolute;top:-14px;width:10px;height:10px;border-radius:2px;animation:fall linear infinite}
-    @keyframes fall{0%{transform:translateY(-20px) rotate(0deg);opacity:1}100%{transform:translateY(110vh) rotate(720deg);opacity:0}}
+    .c{position:absolute;top:-14px;width:9px;height:9px;border-radius:2px;animation:fall linear infinite}
+    @keyframes fall{
+      0%{transform:translateY(-20px) rotate(0deg);opacity:1}
+      100%{transform:translateY(110vh) rotate(740deg);opacity:0}
+    }
   </style>
 </head>
 <body>
@@ -205,28 +326,40 @@
   <!-- Success (kept for legacy show() calls) -->
   <div id="successView" style="display:none"></div>
 
-  <!-- Welcome Overlay Premium -->
+  <!-- Welcome Overlay MAPHAR -->
   <div id="welcomeOverlay">
     <div class="confetti-wrap" id="confettiWrap"></div>
     <div class="w-card">
-      <div class="w-seal">🏛️</div>
-      <div class="w-label">MAPHAR · AG Élective</div>
+
+      <!-- Logo MAPHAR réel -->
+      <div class="w-logo-wrap">
+        <img src="data:image/jpeg;base64,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" alt="MAPHAR" style="width:70px;height:70px;object-fit:contain;border-radius:50%">
+      </div>
+
+      <!-- Banderole institution -->
+      <div class="w-banner">MAPHAR · Mutuelle des Pharmaciens</div>
+
       <div class="w-title">Bienvenue,</div>
       <div class="w-name" id="w-fullname">—</div>
+
       <div class="w-divider"></div>
+
       <div class="w-body">
         Nous sommes heureux de vous accueillir à<br>
-        <strong style="color:#fff">l'Assemblée Générale Élective</strong><br>
-        de la Mutuelle pour l'Assurance des Pharmaciens.<br><br>
-        Installez-vous confortablement,<br>la séance va bientôt commencer. 🤝
+        <strong>l'Assemblée Générale Élective</strong><br>
+        de la MAPHAR.<br><br>
+        Installez-vous confortablement,<br>
+        la séance va bientôt commencer. 🤝
       </div>
+
       <div class="w-meta">
-        <div class="w-chip gold" id="w-time-chip">⏱️ Arrivée enregistrée à —</div>
-        <div class="w-chip" id="w-session-chip">📅 —</div>
-        <div class="w-chip proc" id="w-proc-chip" style="display:none">📜 — pouvoir(s) de représentation</div>
+        <div class="w-chip gold" id="w-time-chip">⏱️&nbsp; Arrivée enregistrée à —</div>
+        <div class="w-chip" id="w-session-chip">📅&nbsp; —</div>
+        <div class="w-chip proc" id="w-proc-chip" style="display:none">📜&nbsp; — pouvoir(s) enregistré(s)</div>
       </div>
-      <button class="w-close" id="w-close-btn" onclick="document.getElementById('welcomeOverlay').style.display='none'">
-        Fermer cette page
+
+      <button class="w-close" id="w-close-btn" onclick="closeAndExit()">
+        ✕ &nbsp; Fermer cette page
       </button>
     </div>
   </div>
@@ -721,7 +854,7 @@ async function handleSubmit() {
 function launchConfetti() {
   const wrap = document.getElementById('confettiWrap');
   wrap.innerHTML = '';
-  const colors = ['#f4c842','#ffffff','#1641a4','#0f2557','#d4a017','#93c5fd'];
+  const colors = ['#C8A020','#ffffff','#2A6B3C','#8B1A1A','#e8c840','#4A9B5F','#fff8e1','#c0392b'];
   for (let i = 0; i < 72; i++) {
     const el = document.createElement('div');
     el.className = 'c';
@@ -739,6 +872,30 @@ function launchConfetti() {
   }
   // Arrête les confettis après 5 s
   setTimeout(() => { wrap.innerHTML = ''; }, 5500);
+}
+
+// ── Fermeture et sortie complète du formulaire ──────────────────────────────
+function closeAndExit() {
+  try { window.close(); } catch(e) {}
+  setTimeout(() => {
+    document.getElementById('welcomeOverlay').style.display = 'none';
+    document.body.innerHTML = `
+      <div style="
+        min-height:100vh;
+        background:linear-gradient(170deg,#1a4a28 0%,#2A6B3C 100%);
+        display:flex;flex-direction:column;align-items:center;justify-content:center;
+        font-family:'Outfit',sans-serif;text-align:center;padding:24px;
+      ">
+        <div style="background:rgba(255,255,255,.10);border:1px solid rgba(200,160,32,.3);border-radius:20px;padding:36px 28px;max-width:340px;width:90%">
+          <div style="font-size:48px;margin-bottom:16px">✅</div>
+          <div style="font-size:11px;font-weight:800;letter-spacing:3px;color:rgba(255,255,255,.5);text-transform:uppercase;margin-bottom:10px">MAPHAR</div>
+          <div style="font-size:20px;font-weight:700;color:#C8A020;margin-bottom:12px">Présence confirmée</div>
+          <div style="font-size:13px;color:rgba(255,255,255,.8);line-height:1.7">
+            Votre présence a bien été enregistrée.<br>Vous pouvez fermer cet onglet.
+          </div>
+        </div>
+      </div>`;
+  }, 300);
 }
 
 // ── Affichage de l'overlay de bienvenue ───────────────────────────────────
