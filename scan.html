@@ -41,6 +41,30 @@
     .btn-submit:hover{transform:translateY(-2px);box-shadow:0 10px 24px rgba(22,65,164,.35)}
     .btn-submit:disabled{background:#93c5fd;cursor:not-allowed;transform:none;box-shadow:none}
 
+    /* Badge type réunion */
+    .type-badge{display:inline-block;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);border-radius:20px;padding:3px 12px;font-size:11px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;margin-top:6px;color:#fff}
+    .type-badge.rmb{background:rgba(255,255,255,.2);border-color:rgba(255,255,255,.4)}
+    .type-badge.rpa{background:rgba(251,191,36,.25);border-color:rgba(251,191,36,.5);color:#fef3c7}
+    .type-badge.rpp{background:rgba(52,211,153,.2);border-color:rgba(52,211,153,.4);color:#d1fae5}
+    .type-badge.autre{background:rgba(167,139,250,.2);border-color:rgba(167,139,250,.4);color:#ede9fe}
+
+    /* Overlay bienvenue */
+    .welcome-overlay{position:fixed;inset:0;background:rgba(15,37,87,.96);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999;padding:24px;text-align:center;transition:opacity .4s}
+    .welcome-overlay.hidden{opacity:0;pointer-events:none}
+    .w-icon{font-size:60px;margin-bottom:12px;animation:popIn .5s cubic-bezier(.175,.885,.32,1.275)}
+    .w-title{font-size:22px;font-weight:800;color:#fff;margin-bottom:8px}
+    .w-name-chip{display:inline-block;background:#22c55e;color:#fff;font-size:16px;font-weight:700;border-radius:12px;padding:6px 18px;margin:8px 0 16px}
+    .w-reunion{font-size:13px;color:rgba(255,255,255,.75);line-height:1.6;margin-bottom:8px}
+    .w-chips{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-bottom:20px}
+    .w-chip{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);border-radius:20px;padding:4px 12px;font-size:12px;color:rgba(255,255,255,.85)}
+    .w-close-btn{background:#22c55e;color:#fff;border:none;border-radius:14px;padding:14px 32px;font-size:15px;font-weight:700;cursor:pointer;letter-spacing:.3px}
+
+    /* Confettis */
+    .confetti-wrap{position:fixed;inset:0;pointer-events:none;z-index:998;overflow:hidden}
+    .c{position:absolute;top:-12px;width:8px;height:8px;border-radius:2px;animation:fall linear infinite}
+    @keyframes fall{to{transform:translateY(110vh) rotate(720deg)}}
+    @keyframes popIn{from{transform:scale(0)}to{transform:scale(1)}}
+
     .state-body{text-align:center;padding:48px 24px}
     .state-icon{font-size:60px;margin-bottom:16px;display:block}
     .state-title{font-size:22px;font-weight:800}
@@ -67,7 +91,7 @@
 <div class="card">
   <div class="card-header">
     <div class="h-title">📋 Feuille de Présence</div>
-    <div class="h-sub">Enregistrez votre présence à cette réunion</div>
+    <div id="typeBadge" class="type-badge rmb">Réunion Bureau Exécutif</div>
     <div class="meeting-strip">
       <div class="m-name" id="mName">Chargement...</div>
       <div class="m-date" id="mDate"></div>
@@ -169,6 +193,17 @@
 
 <div class="page-footer">MAPHAR © 2026 – Présences numériques</div>
 
+<!-- Overlay bienvenue -->
+<div class="welcome-overlay hidden" id="welcomeOverlay">
+  <div class="w-icon">✅</div>
+  <div class="w-title">Présence enregistrée !</div>
+  <div class="w-name-chip" id="wFullName"></div>
+  <div class="w-reunion" id="wReunion"></div>
+  <div class="w-chips" id="wChips"></div>
+  <button class="w-close-btn" onclick="closeOverlay()">Fermer 🎉</button>
+</div>
+<div class="confetti-wrap" id="confettiWrap"></div>
+
 <script>
 // ═══════════════════════════════════════════════
 // ⚙️  CONFIGURATION FIREBASE  —  À COMPLÉTER
@@ -193,6 +228,7 @@ function show(id) {
 }
 
 let db = null;
+let reunionData = null;
 
 async function loadFirebase() {
   return new Promise((resolve, reject) => {
@@ -214,6 +250,55 @@ async function loadFirebase() {
   });
 }
 
+// ── Overlay bienvenue BEX
+function showWelcomeOverlay(prenom, nom, fonction) {
+  const d = reunionData || {};
+  const typeMap = {RMB:'Réunion mensuelle du Bureau Exécutif',RPA:'Réunion avec les partenaires',RPP:'Réunion paritaire',AUTRE:'Autre réunion'};
+  const typeKey = d.typeReunion || 'RMB';
+  const typeLabel = typeMap[typeKey] || typeMap.RMB;
+
+  document.getElementById('wFullName').textContent = prenom + ' ' + nom.toUpperCase();
+  let reunionText = typeLabel;
+  if (d.label) reunionText += '\n' + d.label;
+  document.getElementById('wReunion').innerHTML = '<strong>' + typeLabel + '</strong>';
+  if (d.label) document.getElementById('wReunion').innerHTML += '<br>' + d.label;
+
+  const chips = [];
+  if (d.date) {
+    const ds = new Date(d.date+'T00:00:00').toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+    chips.push('📅 '+ds);
+  }
+  if (d.lieu) chips.push('📍 '+d.lieu);
+  if (fonction) chips.push('🏷️ '+fonction);
+  chips.push('✅ Présence enregistrée');
+  document.getElementById('wChips').innerHTML = chips.map(c=>'<div class="w-chip">'+c+'</div>').join('');
+
+  document.getElementById('welcomeOverlay').classList.remove('hidden');
+  spawnConfetti();
+}
+
+function closeOverlay() {
+  document.getElementById('welcomeOverlay').classList.add('hidden');
+  document.getElementById('confettiWrap').innerHTML = '';
+}
+
+function spawnConfetti() {
+  const wrap = document.getElementById('confettiWrap');
+  wrap.innerHTML = '';
+  const colors = ['#22c55e','#3b82f6','#f59e0b','#ec4899','#8b5cf6','#06b6d4'];
+  for (let i = 0; i < 60; i++) {
+    const el = document.createElement('div');
+    el.className = 'c';
+    el.style.left = Math.random()*100+'vw';
+    el.style.background = colors[Math.floor(Math.random()*colors.length)];
+    el.style.animationDuration = (2+Math.random()*3)+'s';
+    el.style.animationDelay = (Math.random()*2)+'s';
+    el.style.width = (6+Math.random()*8)+'px';
+    el.style.height = el.style.width;
+    wrap.appendChild(el);
+  }
+}
+
 async function init() {
   if (!reunionId) { show('errorView'); return; }
   try {
@@ -221,6 +306,14 @@ async function init() {
     const snap = await db.collection('maphar_reunions').doc(reunionId).get();
     if (!snap.exists) { show('errorView'); return; }
     const d = snap.data();
+    reunionData = d;
+    // Badge type réunion
+    const typeMap = {RMB:'Réunion Bureau Exécutif',RPA:'Réunion Partenaires',RPP:'Réunion Paritaire',AUTRE:'Autre réunion'};
+    const typeCls = {RMB:'rmb',RPA:'rpa',RPP:'rpp',AUTRE:'autre'};
+    const typeKey = d.typeReunion || 'RMB';
+    const badge = document.getElementById('typeBadge');
+    badge.textContent = typeMap[typeKey] || typeMap.RMB;
+    badge.className = 'type-badge '+(typeCls[typeKey]||'rmb');
     document.getElementById('mName').textContent = d.label || 'Réunion Bureau Exécutif';
     if (d.date) {
       const dt = new Date(d.date+'T00:00:00');
@@ -380,6 +473,7 @@ async function handleSubmit() {
     localStorage.setItem('signed_'+reunionId,'1');
     document.getElementById('s-fullname').textContent = prenom+' '+nom.toUpperCase();
     show('successView');
+    showWelcomeOverlay(prenom, nom, fonction);
   } catch(e) {
     console.error(e);
     btn.disabled = false;

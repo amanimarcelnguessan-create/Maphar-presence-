@@ -40,6 +40,30 @@
   .state-sub{font-size:13px;color:#6b7280;max-width:280px;line-height:1.5}
   #formWrap{display:none}
   #formWrap.show{display:block}
+
+  /* Badge type réunion */
+  .badge-type{display:inline-block;border-radius:20px;padding:3px 10px;font-size:10px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;white-space:nowrap;margin-left:8px}
+  .badge-type.rmb{background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.35);color:#fff}
+  .badge-type.rpa{background:rgba(251,191,36,.3);border:1px solid rgba(251,191,36,.5);color:#fef9c3}
+  .badge-type.rpp{background:rgba(52,211,153,.25);border:1px solid rgba(52,211,153,.4);color:#d1fae5}
+  .badge-type.autre{background:rgba(167,139,250,.25);border:1px solid rgba(167,139,250,.4);color:#ede9fe}
+
+  /* Overlay bienvenue */
+  .welcome-overlay{position:fixed;inset:0;background:rgba(20,65,37,.96);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999;padding:24px;text-align:center;transition:opacity .4s ease}
+  .welcome-overlay.hidden{opacity:0;pointer-events:none}
+  .w-icon{font-size:64px;margin-bottom:10px;animation:popIn .5s cubic-bezier(.175,.885,.32,1.275)}
+  .w-title{font-size:22px;font-weight:800;color:#fff;margin-bottom:6px}
+  .w-name-chip{display:inline-block;background:#22c55e;color:#fff;font-size:16px;font-weight:700;border-radius:12px;padding:6px 18px;margin:8px 0 14px}
+  .w-reunion{font-size:13px;color:rgba(255,255,255,.75);line-height:1.6;margin-bottom:14px}
+  .w-chips{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-bottom:22px}
+  .w-chip{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);border-radius:20px;padding:4px 12px;font-size:12px;color:rgba(255,255,255,.85)}
+  .w-close-btn{background:#22c55e;color:#fff;border:none;border-radius:14px;padding:14px 32px;font-size:15px;font-weight:700;cursor:pointer;letter-spacing:.3px}
+
+  /* Confettis */
+  .confetti-wrap{position:fixed;inset:0;pointer-events:none;z-index:998;overflow:hidden}
+  .c{position:absolute;top:-12px;width:8px;height:8px;border-radius:2px;animation:fall linear infinite}
+  @keyframes fall{to{transform:translateY(110vh) rotate(720deg)}}
+  @keyframes popIn{from{transform:scale(0)}to{transform:scale(1)}}
 </style>
 </head>
 <body>
@@ -52,6 +76,7 @@
     <div class="sub">Mutuelle pour l'Assurance des Pharmaciens</div>
   </div>
   <div class="badge-bex">Bureau Exécutif</div>
+  <div id="typeBadge" class="badge-type rmb" style="display:none">RMB</div>
 </div>
 
 <!-- CHARGEMENT -->
@@ -105,6 +130,17 @@
   <button class="btn-submit" id="btnSubmit" onclick="handleSubmit()">✅ Confirmer ma présence</button>
 </div>
 
+<!-- Overlay bienvenue BEX -->
+<div class="welcome-overlay hidden" id="welcomeOverlay">
+  <div class="w-icon">✅</div>
+  <div class="w-title">Présence enregistrée !</div>
+  <div class="w-name-chip" id="wFullName"></div>
+  <div class="w-reunion" id="wReunion"></div>
+  <div class="w-chips" id="wChips"></div>
+  <button class="w-close-btn" onclick="closeOverlay()">Fermer 🎉</button>
+</div>
+<div class="confetti-wrap" id="confettiWrap"></div>
+
 <!-- Firebase + scripts -->
 <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
@@ -121,6 +157,7 @@ const firebaseConfig = {
 
 let db = null;
 let reunion = null;
+let reunionData = null;
 let membres = [];
 let sigCanvas, sigCtx, isSigning = false, hasSig = false;
 
@@ -128,6 +165,55 @@ let sigCanvas, sigCtx, isSigning = false, hasSig = false;
 function show(id)  { document.getElementById(id).classList.add('show'); }
 function hide(id)  { document.getElementById(id).classList.remove('show'); }
 function setForm(v){ document.getElementById('formWrap').classList.toggle('show', v); }
+
+// ── Overlay bienvenue BEX
+function showWelcomeOverlay(membre) {
+  const d = reunionData || {};
+  const typeMap = {RMB:'Réunion mensuelle du Bureau Exécutif',RPA:'Réunion avec les partenaires',RPP:'Réunion paritaire avec le partenaire principal',AUTRE:'Autre réunion'};
+  const typeKey = d.typeReunion || 'RMB';
+  const typeLabel = typeMap[typeKey] || typeMap.RMB;
+
+  document.getElementById('wFullName').textContent = (membre?.nom||'').toUpperCase() + ' ' + (membre?.prenom||'');
+
+  let reunionHtml = '<strong>'+typeLabel+'</strong>';
+  if (d.label) reunionHtml += '<br>'+d.label;
+  document.getElementById('wReunion').innerHTML = reunionHtml;
+
+  const chips = [];
+  if (d.date) {
+    const ds = new Date(d.date+'T00:00:00').toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+    chips.push('📅 '+ds);
+  }
+  if (d.lieu) chips.push('📍 '+d.lieu);
+  if (membre?.fonction) chips.push('🏷️ '+membre.fonction);
+  chips.push('✅ Présence enregistrée');
+  document.getElementById('wChips').innerHTML = chips.map(c=>'<div class="w-chip">'+c+'</div>').join('');
+
+  document.getElementById('welcomeOverlay').classList.remove('hidden');
+  spawnConfetti();
+}
+
+function closeOverlay() {
+  document.getElementById('welcomeOverlay').classList.add('hidden');
+  document.getElementById('confettiWrap').innerHTML = '';
+}
+
+function spawnConfetti() {
+  const wrap = document.getElementById('confettiWrap');
+  wrap.innerHTML = '';
+  const colors = ['#22c55e','#2d7a3a','#86efac','#f59e0b','#3b82f6','#8b5cf6'];
+  for (let i = 0; i < 60; i++) {
+    const el = document.createElement('div');
+    el.className = 'c';
+    el.style.left = Math.random()*100+'vw';
+    el.style.background = colors[Math.floor(Math.random()*colors.length)];
+    el.style.animationDuration = (2+Math.random()*3)+'s';
+    el.style.animationDelay = (Math.random()*2)+'s';
+    el.style.width = (6+Math.random()*8)+'px';
+    el.style.height = el.style.width;
+    wrap.appendChild(el);
+  }
+}
 
 // ── Init Firebase + chargement
 async function init() {
@@ -144,6 +230,16 @@ async function init() {
     const rdoc = await db.collection('maphar_reunions').doc(reunionId).get();
     if (!rdoc.exists) { hide('stateLoading'); show('stateError'); return; }
     reunion = { id: rdoc.id, ...rdoc.data() };
+    reunionData = reunion;
+
+    // Badge type réunion
+    const typeMap = {RMB:'RMB – Mensuelle',RPA:'RPA – Partenaires',RPP:'RPP – Paritaire',AUTRE:'Autre'};
+    const typeCls = {RMB:'rmb',RPA:'rpa',RPP:'rpp',AUTRE:'autre'};
+    const typeKey = reunion.typeReunion || 'RMB';
+    const badge = document.getElementById('typeBadge');
+    badge.textContent = typeMap[typeKey] || typeMap.RMB;
+    badge.className = 'badge-type '+(typeCls[typeKey]||'rmb');
+    badge.style.display = 'inline-block';
 
     // Afficher les infos réunion
     document.getElementById('rLabel').textContent = reunion.label || 'Réunion MAPHAR';
@@ -292,6 +388,7 @@ async function handleSubmit() {
     document.getElementById('doneSub').textContent =
       `${(m?.nom||'').toUpperCase()} ${m?.prenom||''} — votre présence a bien été enregistrée. Merci.`;
     show('stateDone');
+    showWelcomeOverlay(m);
 
   } catch(e) {
     console.error(e);

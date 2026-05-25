@@ -410,41 +410,92 @@ service cloud.firestore {
 
     <!-- TAB STATS -->
     <div id="tab-stats" class="panel">
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px" id="statsKPIs">
-        <div class="card" style="text-align:center;padding:20px">
-          <div style="font-size:36px;font-weight:900;color:var(--blue)" id="st-total-reunions">–</div>
-          <div style="font-size:13px;color:var(--grey);margin-top:4px">Réunions tenues</div>
+
+      <!-- LIGNE 1 : 4 KPI principaux -->
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:16px">
+        <div class="card" style="text-align:center;padding:18px 10px">
+          <div style="font-size:32px;font-weight:900;color:var(--blue)" id="st-total-reunions">–</div>
+          <div style="font-size:11px;color:var(--grey);margin-top:4px;font-weight:600">RÉUNIONS TENUES</div>
         </div>
-        <div class="card" style="text-align:center;padding:20px">
-          <div style="font-size:36px;font-weight:900;color:var(--green)" id="st-total-presences">–</div>
-          <div style="font-size:13px;color:var(--grey);margin-top:4px">Présences enregistrées</div>
+        <div class="card" style="text-align:center;padding:18px 10px">
+          <div style="font-size:32px;font-weight:900;color:var(--green)" id="st-total-presences">–</div>
+          <div style="font-size:11px;color:var(--grey);margin-top:4px;font-weight:600">PRÉSENCES TOTALES</div>
         </div>
-        <div class="card" style="text-align:center;padding:20px">
-          <div style="font-size:36px;font-weight:900;color:var(--orange,#d97706)" id="st-moy-presences">–</div>
-          <div style="font-size:13px;color:var(--grey);margin-top:4px">Présences moy. / réunion</div>
+        <div class="card" style="text-align:center;padding:18px 10px">
+          <div style="font-size:32px;font-weight:900;color:#d97706" id="st-moy-presences">–</div>
+          <div style="font-size:11px;color:var(--grey);margin-top:4px;font-weight:600">MOY. / RÉUNION</div>
         </div>
-        <div class="card" style="text-align:center;padding:20px">
-          <div style="font-size:36px;font-weight:900;color:var(--navy)" id="st-membres-uniques">–</div>
-          <div style="font-size:13px;color:var(--grey);margin-top:4px">Membres uniques</div>
+        <div class="card" style="text-align:center;padding:18px 10px">
+          <div style="font-size:32px;font-weight:900;color:var(--navy)" id="st-membres-uniques">–</div>
+          <div style="font-size:11px;color:var(--grey);margin-top:4px;font-weight:600">MEMBRES BEX</div>
         </div>
       </div>
 
-      <div class="card">
-        <div class="card-title" style="justify-content:space-between">
-          <span>🏆 Top membres (présences)</span>
-          <button class="btn btn-red btn-sm no-print" onclick="purgerPresencesOrphelines()" title="Supprimer les présences dont le membre a été effacé du personnel">🧹 Purger noms supprimés</button>
+      <!-- LIGNE 2 : KPI BEX aide à la décision -->
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:16px">
+        <div class="card" style="text-align:center;padding:18px 10px;position:relative;overflow:hidden">
+          <div style="font-size:28px;font-weight:900" id="st-taux-global">–</div>
+          <div style="font-size:10px;color:var(--grey);margin-top:2px;font-weight:700;text-transform:uppercase">Taux de présence global</div>
+          <div style="margin-top:8px;height:5px;background:var(--border);border-radius:3px">
+            <div id="st-taux-bar" style="height:5px;background:var(--green);border-radius:3px;width:0%;transition:width .8s"></div>
+          </div>
         </div>
-        <div id="st-top-membres">
-          <div class="empty-tbl"><div class="e-icon">📊</div><div class="e-title">Chargement…</div></div>
+        <div class="card" style="text-align:center;padding:18px 10px">
+          <div style="font-size:28px;font-weight:900;color:#7c3aed" id="st-quorum">–</div>
+          <div style="font-size:10px;color:var(--grey);margin-top:2px;font-weight:700;text-transform:uppercase">Réunions avec quorum ½</div>
+        </div>
+        <div class="card" style="text-align:center;padding:18px 10px">
+          <div style="font-size:28px;font-weight:900;color:var(--green)" id="st-assidus">–</div>
+          <div style="font-size:10px;color:var(--grey);margin-top:2px;font-weight:700;text-transform:uppercase">Membres assidus ≥ 75%</div>
+        </div>
+        <div class="card" style="text-align:center;padding:18px 10px">
+          <div style="font-size:28px;font-weight:900;color:var(--red)" id="st-absents">–</div>
+          <div style="font-size:10px;color:var(--grey);margin-top:2px;font-weight:700;text-transform:uppercase">Membres absents &lt; 25%</div>
         </div>
       </div>
 
+      <!-- LIGNE 3 : Répartition par type + tendance -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+        <div class="card">
+          <div class="card-title">📊 Répartition par type de réunion</div>
+          <div id="st-par-type">
+            <div class="empty-tbl"><div class="e-icon">📊</div><div class="e-title">Chargement…</div></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">📈 Tendance de présence (6 dernières réunions)</div>
+          <div id="st-tendance" style="display:flex;align-items:flex-end;gap:6px;height:80px;padding-top:8px"></div>
+          <div id="st-tendance-labels" style="display:flex;gap:6px;margin-top:4px"></div>
+        </div>
+      </div>
+
+      <!-- LIGNE 4 : Top membres + absents récurrents -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+        <div class="card">
+          <div class="card-title" style="justify-content:space-between">
+            <span>🏆 Top membres — Assiduité BEX</span>
+            <button class="btn btn-red btn-sm no-print" onclick="purgerPresencesOrphelines()" title="Purger les présences orphelines">🧹 Purger</button>
+          </div>
+          <div id="st-top-membres">
+            <div class="empty-tbl"><div class="e-icon">📊</div><div class="e-title">Chargement…</div></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title" style="color:var(--red)">⚠️ Membres peu présents — À contacter</div>
+          <div id="st-absents-list">
+            <div class="empty-tbl"><div class="e-icon">👥</div><div class="e-title">Chargement…</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- LIGNE 5 : Présences par réunion -->
       <div class="card">
-        <div class="card-title">📅 Présences par réunion</div>
+        <div class="card-title">📅 Détail par réunion</div>
         <div id="st-par-reunion">
           <div class="empty-tbl"><div class="e-icon">📊</div><div class="e-title">Chargement…</div></div>
         </div>
       </div>
+
     </div><!-- /tab-stats -->
 
   </div>
@@ -1412,133 +1463,198 @@ async function purgerPresencesOrphelines() {
 
 async function buildStats() {
   try {
-    // Force fetch depuis le serveur (ignore le cache offline Firestore)
-    // Recharger les réunions ET les présences directement depuis Firestore
-    const [rSnap, snap] = await Promise.all([
+    const [rSnap, snap, mSnap] = await Promise.all([
       db.collection('maphar_reunions').get({source:'server'}),
-      db.collection('maphar_presences').get({source:'server'})
+      db.collection('maphar_presences').get({source:'server'}),
+      db.collection('maphar_membres').get({source:'server'})
     ]);
     const allReunions = rSnap.docs.map(d=>({id:d.id,...d.data()}));
-    const all  = snap.docs.map(d=>d.data());
+    const all         = snap.docs.map(d=>d.data());
+    const membres     = mSnap.docs.map(d=>d.data());
 
-    const totalR   = allReunions.length;
-    const totalP   = all.length;
-    const moyP     = totalR ? (totalP / totalR).toFixed(1) : 0;
+    const totalR = allReunions.length;
+    const totalP = all.length;
+    const moyP   = totalR ? (totalP/totalR).toFixed(1) : 0;
+    const totalM = membres.length;
 
-    // Membres uniques — combinaison téléphone + nom normalisé
-    const phonesUniques = new Set(all.map(p=>(p.telephone||'').replace(/\s/g,'')).filter(Boolean));
-    const nomsUniques   = new Set(all.filter(p=>!(p.telephone||'').trim()).map(p=>normalize(`${p.nom||''} ${p.prenom||''}`)).filter(Boolean));
-    const uniques = phonesUniques.size + nomsUniques.size;
+    // ── Index canoniques membres
+    const telToCanon={}, normToCanon={};
+    membres.forEach(m=>{
+      const tel=(m.telephone||'').replace(/\s/g,'');
+      const label=`${(m.nom||'').toUpperCase()} ${m.prenom||''}`.trim();
+      if(tel) telToCanon[tel]=label;
+      const k=normalize(`${m.nom||''} ${m.prenom||''}`);
+      if(k) normToCanon[k]=label;
+      const kn=normalize(m.nom||'');
+      if(kn) normToCanon[kn]=label;
+    });
 
+    // ── Regroupement présences → compteur par membre
+    const compteur={};
+    all.forEach(p=>{
+      const tel=(p.telephone||'').replace(/\s/g,'');
+      const fullNorm=normalize(`${p.nom||''} ${p.prenom||''}`);
+      const nomNorm=normalize(p.nom||'');
+      let cle,label;
+      if(tel){
+        cle='tel:'+tel;
+        label=telToCanon[tel]||`${(p.nom||'').toUpperCase()} ${p.prenom||''}`.trim();
+      } else {
+        cle='nom:'+(fullNorm||nomNorm||'?');
+        label=normToCanon[fullNorm]||normToCanon[nomNorm]||`${(p.nom||'').toUpperCase()} ${p.prenom||''}`.trim();
+      }
+      if(!cle||cle==='tel:'||cle==='nom:?') return;
+      if(!compteur[cle]) compteur[cle]={label:label||'?',count:0,reunions:new Set()};
+      if(label&&label!=='?') compteur[cle].label=label;
+      compteur[cle].count++;
+      if(p.reunionId) compteur[cle].reunions.add(p.reunionId);
+    });
+
+    const entries=Object.values(compteur);
+    const uniquesCount=entries.length||totalM;
+
+    // ── KPI 1 : taux global
+    const maxPossible=totalR*(totalM||1);
+    const tauxGlobal=maxPossible>0?Math.round((totalP/maxPossible)*100):0;
+    const tauxColor=tauxGlobal>=75?'var(--green)':tauxGlobal>=50?'#d97706':'var(--red)';
+
+    // ── KPI 2 : quorum (≥50% des membres BEX)
+    const quorumSeuil=Math.max(1,Math.ceil((totalM||1)/2));
+    const reunionsAvecQuorum=allReunions.filter(r=>{
+      const cnt=all.filter(p=>p.reunionId===r.id).length;
+      return cnt>=quorumSeuil;
+    }).length;
+
+    // ── KPI 3/4 : assidus ≥75%, absents <25%
+    const assidus=entries.filter(e=>totalR>0&&(e.reunions.size/totalR)>=0.75).length;
+    const absents=entries.filter(e=>totalR>0&&(e.reunions.size/totalR)<0.25).length;
+
+    // Mise à jour KPIs
     document.getElementById('st-total-reunions').textContent  = totalR;
     document.getElementById('st-total-presences').textContent = totalP;
     document.getElementById('st-moy-presences').textContent   = moyP;
-    document.getElementById('st-membres-uniques').textContent = uniques;
+    document.getElementById('st-membres-uniques').textContent = totalM||uniquesCount;
+    document.getElementById('st-taux-global').textContent     = tauxGlobal+'%';
+    document.getElementById('st-taux-global').style.color     = tauxColor;
+    document.getElementById('st-taux-bar').style.width        = tauxGlobal+'%';
+    document.getElementById('st-taux-bar').style.background   = tauxColor;
+    document.getElementById('st-quorum').textContent          = `${reunionsAvecQuorum}/${totalR}`;
+    document.getElementById('st-assidus').textContent         = assidus;
+    document.getElementById('st-absents').textContent         = absents;
 
-    // ═══════════════════════════════════════════════════════════════
-    // UNIFICATION : même membre qu'il ait sélectionné dans la liste
-    // OU saisi manuellement — clé = téléphone normalisé OU nom+prénom normalisé
-    // Le nom affiché = version fidèle de la liste du personnel si dispo,
-    // sinon la version de la première saisie
-    // ═══════════════════════════════════════════════════════════════
-
-    // 1. Charger la liste du personnel pour récupérer les noms canoniques
-    const mSnap = await db.collection('maphar_membres').get({source:'server'});
-    const membres = mSnap.docs.map(d=>d.data());
-
-    // Index : téléphone normalisé → nom canonique
-    const telToCanon = {};
-    membres.forEach(m => {
-      const tel = (m.telephone||'').replace(/\s/g,'');
-      if (tel) telToCanon[tel] = `${(m.nom||'').toUpperCase()} ${m.prenom||''}`.trim();
-    });
-    // Index : nom+prénom normalisé → nom canonique
-    const normToCanon = {};
-    membres.forEach(m => {
-      const key = normalize(`${m.nom||''} ${m.prenom||''}`);
-      if (key) normToCanon[key] = `${(m.nom||'').toUpperCase()} ${m.prenom||''}`.trim();
-      // Aussi par nom seul normalisé
-      const nomKey = normalize(m.nom||'');
-      if (nomKey) normToCanon[nomKey] = `${(m.nom||'').toUpperCase()} ${m.prenom||''}`.trim();
-    });
-
-    // 2. Regroupement unifié
-    const compteur = {}; // clé unifiée → {label, count}
-
-    all.forEach(p => {
-      const tel       = (p.telephone||'').replace(/\s/g,'');
-      const fullNorm  = normalize(`${p.nom||''} ${p.prenom||''}`);
-      const nomNorm   = normalize(p.nom||'');
-
-      let cle, label;
-
-      if (tel) {
-        // Clé prioritaire = téléphone
-        cle   = 'tel:' + tel;
-        // Nom canonique depuis la liste si dispo, sinon tel qu'enregistré
-        label = telToCanon[tel] || `${(p.nom||'').toUpperCase()} ${p.prenom||''}`.trim();
-      } else {
-        // Clé secondaire = nom+prénom normalisé
-        // Essai : nom+prénom complet, puis nom seul
-        const matchFull = normToCanon[fullNorm];
-        const matchNom  = normToCanon[nomNorm];
-        const canon     = matchFull || matchNom;
-        cle   = 'nom:' + (fullNorm || nomNorm || '?');
-        label = canon || `${(p.nom||'').toUpperCase()} ${p.prenom||''}`.trim();
-      }
-
-      if (!cle || cle === 'tel:' || cle === 'nom:?') return;
-      if (!compteur[cle]) compteur[cle] = { label: label || '?', count: 0 };
-      // Si le nom canonique est maintenant dispo (premier enreg. sans liste), on l'applique
-      if (label && label !== '?') compteur[cle].label = label;
-      compteur[cle].count++;
-    });
-
-    const topList = Object.values(compteur).sort((a,b)=>b.count-a.count).slice(0,10);
-
-    const topEl = document.getElementById('st-top-membres');
-    if (!topList.length) {
-      topEl.innerHTML = '<div class="empty-tbl"><div class="e-icon">👥</div><div class="e-title">Aucune donnée</div></div>';
-    } else {
-      const max = topList[0].count;
-      topEl.innerHTML = topList.map(({label,count},i) => {
-        const pct   = Math.round((count/max)*100);
-        const medal = i===0?'🥇':i===1?'🥈':i===2?'🥉':'';
-        return `<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
-          <span style="font-size:16px;width:24px">${medal||'·'}</span>
-          <div style="flex:1">
-            <div style="font-size:13px;font-weight:600">${esc(label)}</div>
-            <div style="height:6px;background:var(--border);border-radius:3px;margin-top:4px">
-              <div style="height:6px;background:var(--blue);border-radius:3px;width:${pct}%;transition:width .5s"></div>
-            </div>
+    // ── Répartition par type de réunion
+    const typeMap={RMB:'📋 Réunion Bureau Exéc.',RPA:'🤝 Avec partenaires',RPP:'⚖️ Paritaire',AUTRE:'📌 Autre'};
+    const typeCnt={RMB:0,RPA:0,RPP:0,AUTRE:0};
+    allReunions.forEach(r=>{ const t=r.typeReunion||'RMB'; typeCnt[t]=(typeCnt[t]||0)+1; });
+    const typeEl=document.getElementById('st-par-type');
+    const maxT=Math.max(...Object.values(typeCnt),1);
+    typeEl.innerHTML=Object.entries(typeCnt).filter(([,v])=>v>0).map(([k,v])=>`
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+        <div style="flex:1">
+          <div style="font-size:12px;font-weight:600">${typeMap[k]||k}</div>
+          <div style="height:6px;background:var(--border);border-radius:3px;margin-top:4px">
+            <div style="height:6px;background:var(--blue);border-radius:3px;width:${Math.round(v/maxT*100)}%"></div>
           </div>
-          <span style="font-size:13px;font-weight:700;color:var(--blue);min-width:40px;text-align:right">${count} fois</span>
+        </div>
+        <span style="font-size:13px;font-weight:700;color:var(--blue);min-width:28px;text-align:right">${v}</span>
+      </div>`).join('')||'<div style="color:var(--grey);font-size:12px">Aucun type défini</div>';
+
+    // ── Tendance : 6 dernières réunions
+    const reunionsTri=allReunions.filter(r=>r.date).sort((a,b)=>a.date.localeCompare(b.date));
+    const last6=reunionsTri.slice(-6);
+    const tendEl=document.getElementById('st-tendance');
+    const tendLbl=document.getElementById('st-tendance-labels');
+    const tmax=Math.max(...last6.map(r=>all.filter(p=>p.reunionId===r.id).length),1);
+    tendEl.innerHTML=last6.map(r=>{
+      const cnt=all.filter(p=>p.reunionId===r.id).length;
+      const h=Math.max(8,Math.round((cnt/tmax)*72));
+      const color=cnt>=quorumSeuil?'var(--green)':'#d97706';
+      return `<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px">
+        <span style="font-size:10px;font-weight:700;color:${color}">${cnt}</span>
+        <div style="width:100%;height:${h}px;background:${color};border-radius:4px 4px 0 0;opacity:.85"></div>
+      </div>`;
+    }).join('');
+    tendLbl.innerHTML=last6.map(r=>{
+      const ds=new Date(r.date+'T00:00:00').toLocaleDateString('fr-FR',{month:'short'}).replace('.','');
+      return `<div style="flex:1;text-align:center;font-size:9px;color:var(--grey)">${ds}</div>`;
+    }).join('');
+
+    // ── Top membres avec taux d'assiduité
+    const topList=entries.sort((a,b)=>b.count-a.count).slice(0,10);
+    const topEl=document.getElementById('st-top-membres');
+    if(!topList.length){
+      topEl.innerHTML='<div class="empty-tbl"><div class="e-icon">👥</div><div class="e-title">Aucune donnée</div></div>';
+    } else {
+      const maxC=topList[0].count;
+      topEl.innerHTML=topList.map(({label,count,reunions},i)=>{
+        const taux=totalR>0?Math.round((reunions.size/totalR)*100):0;
+        const medal=i===0?'🥇':i===1?'🥈':i===2?'🥉':'';
+        const tc=taux>=75?'var(--green)':taux>=50?'#d97706':'var(--red)';
+        return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+          <span style="font-size:15px;width:20px">${medal||'·'}</span>
+          <div style="flex:1;min-width:0">
+            <div style="display:flex;justify-content:space-between;align-items:baseline">
+              <span style="font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:160px">${esc(label)}</span>
+              <span style="font-size:11px;font-weight:700;color:${tc};flex-shrink:0;margin-left:6px">${taux}%</span>
+            </div>
+            <div style="height:5px;background:var(--border);border-radius:3px;margin-top:3px">
+              <div style="height:5px;background:var(--blue);border-radius:3px;width:${Math.round(count/maxC*100)}%;transition:width .5s"></div>
+            </div>
+            <div style="font-size:10px;color:var(--grey);margin-top:2px">${count} présence(s) sur ${totalR} réunion(s)</div>
+          </div>
         </div>`;
       }).join('');
     }
 
-    // Par réunion — utiliser allReunions rechargé depuis le serveur
-    const parR = allReunions.map(r => {
-      const cnt = all.filter(p=>p.reunionId===r.id).length;
-      const ds  = r.date ? new Date(r.date+'T00:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'short',year:'numeric'}) : '–';
-      return {label: r.label, date: ds, cnt};
-    }).sort((a,b)=>b.cnt-a.cnt);
+    // ── Membres peu présents (absents < 25%)
+    const absentsList=entries.filter(e=>totalR>0&&(e.reunions.size/totalR)<0.25)
+      .sort((a,b)=>a.reunions.size-b.reunions.size).slice(0,8);
+    const absEl=document.getElementById('st-absents-list');
+    if(!absentsList.length){
+      absEl.innerHTML='<div class="empty-tbl"><div class="e-icon">✅</div><div class="e-title">Tous les membres sont présents régulièrement</div></div>';
+    } else {
+      absEl.innerHTML=absentsList.map(({label,count,reunions})=>{
+        const taux=totalR>0?Math.round((reunions.size/totalR)*100):0;
+        return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:9px">
+          <span style="font-size:16px">⚠️</span>
+          <div style="flex:1;min-width:0">
+            <div style="display:flex;justify-content:space-between">
+              <span style="font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:160px">${esc(label)}</span>
+              <span style="font-size:11px;font-weight:700;color:var(--red);flex-shrink:0;margin-left:6px">${taux}%</span>
+            </div>
+            <div style="font-size:10px;color:var(--grey)">${count} présence(s) / ${totalR} réunion(s)</div>
+          </div>
+        </div>`;
+      }).join('');
+    }
 
-    const parEl = document.getElementById('st-par-reunion');
-    const maxR  = parR[0]?.cnt || 1;
-    parEl.innerHTML = parR.map(r => `
+    // ── Détail par réunion
+    const parR=allReunions.map(r=>{
+      const cnt=all.filter(p=>p.reunionId===r.id).length;
+      const ds=r.date?new Date(r.date+'T00:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'short',year:'numeric'}):'–';
+      const typeLabel={RMB:'RMB',RPA:'RPA',RPP:'RPP',AUTRE:'AUTRE'}[r.typeReunion]||'–';
+      const hasQuorum=cnt>=quorumSeuil;
+      return {label:r.label,date:ds,type:typeLabel,cnt,hasQuorum};
+    }).sort((a,b)=>b.cnt-a.cnt);
+    const parEl=document.getElementById('st-par-reunion');
+    const maxRP=parR[0]?.cnt||1;
+    parEl.innerHTML=parR.map(r=>`
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
         <div style="flex:1;min-width:0">
-          <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(r.label)}</div>
+          <div style="display:flex;align-items:center;gap:6px">
+            <span style="font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:200px">${esc(r.label)}</span>
+            <span style="font-size:9px;background:#e0e7ff;color:#3730a3;border-radius:8px;padding:1px 6px;font-weight:700;flex-shrink:0">${r.type}</span>
+            ${r.hasQuorum?'<span style="font-size:9px;background:#dcfce7;color:#14532d;border-radius:8px;padding:1px 6px;font-weight:700;flex-shrink:0">✓ Quorum</span>':'<span style="font-size:9px;background:#fee2e2;color:#7f1d1d;border-radius:8px;padding:1px 6px;font-weight:700;flex-shrink:0">✗ Sans quorum</span>'}
+          </div>
           <div style="font-size:11px;color:var(--grey)">${r.date}</div>
-          <div style="height:6px;background:var(--border);border-radius:3px;margin-top:4px">
-            <div style="height:6px;background:var(--green);border-radius:3px;width:${Math.round((r.cnt/maxR)*100)}%"></div>
+          <div style="height:5px;background:var(--border);border-radius:3px;margin-top:4px">
+            <div style="height:5px;background:var(--green);border-radius:3px;width:${Math.round(r.cnt/maxRP*100)}%"></div>
           </div>
         </div>
         <span style="font-size:13px;font-weight:700;color:var(--green);min-width:50px;text-align:right">${r.cnt} présent(s)</span>
-      </div>`).join('') || '<div class="empty-tbl"><div class="e-icon">📊</div><div class="e-title">Aucune donnée</div></div>';
+      </div>`).join('')||'<div class="empty-tbl"><div class="e-icon">📊</div><div class="e-title">Aucune donnée</div></div>';
 
-  } catch(e) { console.error(e); }
+  } catch(e){ console.error(e); }
 }
 
 function toggleDark() {
