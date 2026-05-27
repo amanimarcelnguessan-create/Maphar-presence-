@@ -41,30 +41,6 @@
     .btn-submit:hover{transform:translateY(-2px);box-shadow:0 10px 24px rgba(22,65,164,.35)}
     .btn-submit:disabled{background:#93c5fd;cursor:not-allowed;transform:none;box-shadow:none}
 
-    /* Badge type réunion */
-    .type-badge{display:inline-block;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);border-radius:20px;padding:3px 12px;font-size:11px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;margin-top:6px;color:#fff}
-    .type-badge.rmb{background:rgba(255,255,255,.2);border-color:rgba(255,255,255,.4)}
-    .type-badge.rpa{background:rgba(251,191,36,.25);border-color:rgba(251,191,36,.5);color:#fef3c7}
-    .type-badge.rpp{background:rgba(52,211,153,.2);border-color:rgba(52,211,153,.4);color:#d1fae5}
-    .type-badge.autre{background:rgba(167,139,250,.2);border-color:rgba(167,139,250,.4);color:#ede9fe}
-
-    /* Overlay bienvenue */
-    .welcome-overlay{position:fixed;inset:0;background:rgba(15,37,87,.96);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999;padding:24px;text-align:center;transition:opacity .4s}
-    .welcome-overlay.hidden{opacity:0;pointer-events:none}
-    .w-icon{font-size:60px;margin-bottom:12px;animation:popIn .5s cubic-bezier(.175,.885,.32,1.275)}
-    .w-title{font-size:22px;font-weight:800;color:#fff;margin-bottom:8px}
-    .w-name-chip{display:inline-block;background:#22c55e;color:#fff;font-size:16px;font-weight:700;border-radius:12px;padding:6px 18px;margin:8px 0 16px}
-    .w-reunion{font-size:13px;color:rgba(255,255,255,.75);line-height:1.6;margin-bottom:8px}
-    .w-chips{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-bottom:20px}
-    .w-chip{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);border-radius:20px;padding:4px 12px;font-size:12px;color:rgba(255,255,255,.85)}
-    .w-close-btn{background:#22c55e;color:#fff;border:none;border-radius:14px;padding:14px 32px;font-size:15px;font-weight:700;cursor:pointer;letter-spacing:.3px}
-
-    /* Confettis */
-    .confetti-wrap{position:fixed;inset:0;pointer-events:none;z-index:998;overflow:hidden}
-    .c{position:absolute;top:-12px;width:8px;height:8px;border-radius:2px;animation:fall linear infinite}
-    @keyframes fall{to{transform:translateY(110vh) rotate(720deg)}}
-    @keyframes popIn{from{transform:scale(0)}to{transform:scale(1)}}
-
     .state-body{text-align:center;padding:48px 24px}
     .state-icon{font-size:60px;margin-bottom:16px;display:block}
     .state-title{font-size:22px;font-weight:800}
@@ -76,6 +52,24 @@
     /* LOADING spinner */
     .spinner{width:40px;height:40px;border:4px solid rgba(22,65,164,.15);border-top-color:var(--blue);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 16px}
     @keyframes spin{to{transform:rotate(360deg)}}
+
+    /* Badge type réunion */
+    .type-badge{display:inline-block;border-radius:20px;padding:3px 12px;font-size:11px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;margin-top:6px;color:#fff;background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.35)}
+
+    /* Overlay bienvenue */
+    .welcome-overlay{position:fixed;inset:0;background:rgba(15,37,87,.96);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999;padding:24px;text-align:center}
+    .welcome-overlay.hidden{display:none}
+    .w-logo-wrap{width:72px;height:72px;border-radius:12px;background:#fff;padding:4px;margin-bottom:12px}
+    .w-logo-wrap img{width:64px;height:64px;object-fit:contain;border-radius:8px}
+    .w-title{font-size:22px;font-weight:800;color:#fff;margin-bottom:6px}
+    .w-name-chip{display:inline-block;background:#22c55e;color:#fff;font-size:16px;font-weight:700;border-radius:12px;padding:6px 18px;margin:8px 0 14px}
+    .w-reunion-txt{font-size:13px;color:rgba(255,255,255,.75);line-height:1.6;margin-bottom:14px}
+    .w-chips{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-bottom:22px}
+    .w-chip{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);border-radius:20px;padding:4px 12px;font-size:12px;color:rgba(255,255,255,.85)}
+    .w-close-btn{background:#22c55e;color:#fff;border:none;border-radius:14px;padding:14px 32px;font-size:15px;font-weight:700;cursor:pointer}
+    .confetti-wrap{position:fixed;inset:0;pointer-events:none;z-index:998;overflow:hidden}
+    .c{position:absolute;top:-12px;width:8px;height:8px;border-radius:2px;animation:fall linear infinite}
+    @keyframes fall{to{transform:translateY(110vh) rotate(720deg)}}
   </style>
 </head>
 <body>
@@ -91,7 +85,7 @@
 <div class="card">
   <div class="card-header">
     <div class="h-title">📋 Feuille de Présence</div>
-    <div id="typeBadge" class="type-badge rmb">Réunion Bureau Exécutif</div>
+    <div id="typeBadge" class="type-badge" style="display:none"></div>
     <div class="meeting-strip">
       <div class="m-name" id="mName">Chargement...</div>
       <div class="m-date" id="mDate"></div>
@@ -110,14 +104,7 @@
   <div id="formView" style="display:none">
     <div class="form-body">
       <div class="already-warn" id="alreadyWarn">⚠️ Vous avez déjà enregistré votre présence pour cette réunion.</div>
-      <div class="form-lead">✍️ Sélectionnez votre nom ou saisissez vos informations :</div>
-
-      <div class="field" id="membreSelectField">
-        <label>Choisir dans la liste des membres</label>
-        <select id="membreSelect" onchange="onMembreSelect()">
-          <option value="">— Sélectionner votre nom —</option>
-        </select>
-      </div>
+      <div class="form-lead">✍️ Saisissez vos informations pour enregistrer votre présence :</div>
 
       <div id="manualFields">
         <div class="field">
@@ -193,16 +180,17 @@
 
 <div class="page-footer">MAPHAR © 2026 – Présences numériques</div>
 
+
 <!-- Overlay bienvenue -->
 <div class="welcome-overlay hidden" id="welcomeOverlay">
-  <div class="w-icon">✅</div>
+  <div class="w-logo-wrap"><img id="overlayLogo" src="" alt="MAPHAR"></div>
   <div class="w-title">Présence enregistrée !</div>
   <div class="w-name-chip" id="wFullName"></div>
-  <div class="w-reunion" id="wReunion"></div>
+  <div class="w-reunion-txt" id="wReunion"></div>
   <div class="w-chips" id="wChips"></div>
   <button class="w-close-btn" onclick="closeOverlay()">Fermer 🎉</button>
 </div>
-<div class="confetti-wrap" id="confettiWrap"></div>
+<div class="confetti-wrap hidden" id="confettiWrap"></div>
 
 <script>
 // ═══════════════════════════════════════════════
@@ -228,7 +216,6 @@ function show(id) {
 }
 
 let db = null;
-let reunionData = null;
 
 async function loadFirebase() {
   return new Promise((resolve, reject) => {
@@ -250,54 +237,59 @@ async function loadFirebase() {
   });
 }
 
-// ── Overlay bienvenue BEX
-function showWelcomeOverlay(prenom, nom, fonction) {
-  const d = reunionData || {};
-  const typeMap = {RMB:'Réunion mensuelle du Bureau Exécutif',RPA:'Réunion avec les partenaires',RPP:'Réunion paritaire',AUTRE:'Autre réunion'};
-  const typeKey = d.typeReunion || 'RMB';
-  const typeLabel = typeMap[typeKey] || typeMap.RMB;
+// ── Variable réunion (pour l'overlay)
+let reunionData = null;
 
-  document.getElementById('wFullName').textContent = prenom + ' ' + nom.toUpperCase();
-  let reunionText = typeLabel;
-  if (d.label) reunionText += '\n' + d.label;
-  document.getElementById('wReunion').innerHTML = '<strong>' + typeLabel + '</strong>';
-  if (d.label) document.getElementById('wReunion').innerHTML += '<br>' + d.label;
+// ── Overlay bienvenue
+function showWelcomeOverlay(prenom, nom, fonction, d) {
+  const tMap={RMB:'Réunion mensuelle du Bureau Exécutif',RPA:'Réunion avec les partenaires',RPP:'Réunion paritaire avec le partenaire principal',AUTRE:'Autre réunion'};
+  const tKey=(d&&d.typeReunion)||'RMB';
+  const typeLabel=tMap[tKey]||tMap.RMB;
 
-  const chips = [];
-  if (d.date) {
-    const ds = new Date(d.date+'T00:00:00').toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
-    chips.push('📅 '+ds);
-  }
-  if (d.lieu) chips.push('📍 '+d.lieu);
-  if (fonction) chips.push('🏷️ '+fonction);
+  // Logo
+  const logoEl=document.querySelector('.brand-shield img');
+  if(logoEl) document.getElementById('overlayLogo').src=logoEl.src;
+
+  document.getElementById('wFullName').textContent=nom.toUpperCase()+' '+prenom;
+  let html='<strong>'+typeLabel+'</strong>';
+  if(d&&d.label) html+='<br>'+d.label;
+  document.getElementById('wReunion').innerHTML=html;
+
+  const chips=[];
+  if(d&&d.date){const ds=new Date(d.date+'T00:00:00').toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});chips.push('📅 '+ds);}
+  if(d&&d.lieu) chips.push('📍 '+d.lieu);
+  if(fonction) chips.push('🏷️ '+fonction);
   chips.push('✅ Présence enregistrée');
-  document.getElementById('wChips').innerHTML = chips.map(c=>'<div class="w-chip">'+c+'</div>').join('');
+  document.getElementById('wChips').innerHTML=chips.map(c=>'<div class="w-chip">'+c+'</div>').join('');
 
   document.getElementById('welcomeOverlay').classList.remove('hidden');
+  document.getElementById('confettiWrap').classList.remove('hidden');
   spawnConfetti();
 }
 
-function closeOverlay() {
+function closeOverlay(){
   document.getElementById('welcomeOverlay').classList.add('hidden');
-  document.getElementById('confettiWrap').innerHTML = '';
+  document.getElementById('confettiWrap').classList.add('hidden');
+  document.getElementById('confettiWrap').innerHTML='';
 }
 
-function spawnConfetti() {
-  const wrap = document.getElementById('confettiWrap');
-  wrap.innerHTML = '';
-  const colors = ['#22c55e','#3b82f6','#f59e0b','#ec4899','#8b5cf6','#06b6d4'];
-  for (let i = 0; i < 60; i++) {
-    const el = document.createElement('div');
-    el.className = 'c';
-    el.style.left = Math.random()*100+'vw';
-    el.style.background = colors[Math.floor(Math.random()*colors.length)];
-    el.style.animationDuration = (2+Math.random()*3)+'s';
-    el.style.animationDelay = (Math.random()*2)+'s';
-    el.style.width = (6+Math.random()*8)+'px';
-    el.style.height = el.style.width;
+function spawnConfetti(){
+  const wrap=document.getElementById('confettiWrap');
+  wrap.innerHTML='';
+  const colors=['#22c55e','#3b82f6','#f59e0b','#ec4899','#8b5cf6','#06b6d4'];
+  for(let i=0;i<60;i++){
+    const el=document.createElement('div');
+    el.className='c';
+    el.style.left=Math.random()*100+'vw';
+    el.style.background=colors[Math.floor(Math.random()*colors.length)];
+    el.style.animationDuration=(2+Math.random()*3)+'s';
+    el.style.animationDelay=(Math.random()*2)+'s';
+    el.style.width=(6+Math.random()*8)+'px';
+    el.style.height=el.style.width;
     wrap.appendChild(el);
   }
 }
+
 
 async function init() {
   if (!reunionId) { show('errorView'); return; }
@@ -306,14 +298,13 @@ async function init() {
     const snap = await db.collection('maphar_reunions').doc(reunionId).get();
     if (!snap.exists) { show('errorView'); return; }
     const d = snap.data();
+    // Badge type réunion dynamique
+    const tMap={RMB:'Réunion Bureau Exécutif',RPA:'Réunion Partenaires',RPP:'Réunion Paritaire',AUTRE:'Autre réunion'};
+    const tKey=d.typeReunion||'RMB';
+    const tBadge=document.getElementById('typeBadge');
+    tBadge.textContent=(tMap[tKey]||tKey).toUpperCase();
+    tBadge.style.display='inline-block';
     reunionData = d;
-    // Badge type réunion
-    const typeMap = {RMB:'Réunion Bureau Exécutif',RPA:'Réunion Partenaires',RPP:'Réunion Paritaire',AUTRE:'Autre réunion'};
-    const typeCls = {RMB:'rmb',RPA:'rpa',RPP:'rpp',AUTRE:'autre'};
-    const typeKey = d.typeReunion || 'RMB';
-    const badge = document.getElementById('typeBadge');
-    badge.textContent = typeMap[typeKey] || typeMap.RMB;
-    badge.className = 'type-badge '+(typeCls[typeKey]||'rmb');
     document.getElementById('mName').textContent = d.label || 'Réunion Bureau Exécutif';
     if (d.date) {
       const dt = new Date(d.date+'T00:00:00');
@@ -322,27 +313,6 @@ async function init() {
     if (localStorage.getItem('signed_'+reunionId)) {
       document.getElementById('alreadyWarn').style.display='block';
     }
-    // Load membre list
-    try {
-      const mSnap = await db.collection('maphar_membres').orderBy('nom','asc').get();
-      const sel   = document.getElementById('membreSelect');
-      mSnap.docs.forEach(d => {
-        const m   = d.data();
-        const opt = document.createElement('option');
-        opt.value = d.id;
-        opt.textContent = `${(m.nom||'').toUpperCase()} ${m.prenom||''} – ${m.fonction||''}`;
-        opt.dataset.nom = m.nom||'';
-        opt.dataset.prenom = m.prenom||'';
-        opt.dataset.fonction = m.fonction||'';
-        opt.dataset.telephone = m.telephone||'';
-        opt.dataset.email = m.email||'';
-        sel.appendChild(opt);
-      });
-      if (mSnap.size === 0) {
-        document.getElementById('membreSelectField').style.display = 'none';
-      }
-    } catch(e) { document.getElementById('membreSelectField').style.display='none'; }
-
     show('formView');
     setTimeout(initSig, 100);
   } catch(e) {
@@ -351,24 +321,7 @@ async function init() {
   }
 }
 
-// ── Member select autocomplete
-function onMembreSelect() {
-  const sel = document.getElementById('membreSelect');
-  const opt = sel.options[sel.selectedIndex];
-  if (!opt || !opt.value) return;
-  document.getElementById('f-nom').value       = opt.dataset.nom.toUpperCase();
-  document.getElementById('f-prenom').value    = opt.dataset.prenom;
-  document.getElementById('f-fonction').value  = opt.dataset.fonction;
-  document.getElementById('f-telephone').value = opt.dataset.telephone;
-  document.getElementById('f-email').value     = opt.dataset.email;
-  // Clear validation errors
-  ['f-nom','f-prenom','f-fonction','f-telephone'].forEach(id=>{
-    document.getElementById(id).classList.remove('invalid');
-  });
-  ['h-nom','h-prenom','h-fonction','h-telephone'].forEach(id=>{
-    document.getElementById(id).classList.remove('show');
-  });
-}
+
 
 // ── Signature pad
 let sigCanvas, sigCtx, isSigning = false, hasSig = false;
@@ -473,7 +426,7 @@ async function handleSubmit() {
     localStorage.setItem('signed_'+reunionId,'1');
     document.getElementById('s-fullname').textContent = prenom+' '+nom.toUpperCase();
     show('successView');
-    showWelcomeOverlay(prenom, nom, fonction);
+    showWelcomeOverlay(prenom, nom, fonction, reunionData);
   } catch(e) {
     console.error(e);
     btn.disabled = false;
