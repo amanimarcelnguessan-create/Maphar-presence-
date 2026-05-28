@@ -231,7 +231,7 @@ async function init() {
     const d = snap.data();
     _reunionData = d;
     const _tb=document.getElementById('typeBadge');
-    const _tm={RMB:'RÃ©union Bureau ExÃ©cutif',RPA:'RÃ©union Partenaires',RPP:'RÃ©union Paritaire',AUTRE:'Autre rÃ©union'};
+    const _tm={RMB:'Réunion Bureau Exécutif',RPA:'Réunion Partenaires',RPP:'Réunion Paritaire',AUTRE:'Autre réunion'};
     if(_tb){_tb.textContent=(_tm[d.typeReunion]||_tm.RMB).toUpperCase();_tb.style.display='inline-block';}
     document.getElementById('mName').textContent = d.label || 'Réunion Bureau Exécutif';
     if (d.date) {
@@ -392,6 +392,10 @@ function closeOverlay() {
   document.getElementById('welcomeOverlay').classList.add('hidden');
   document.getElementById('confettiWrap').classList.add('hidden');
   document.getElementById('confettiWrap').innerHTML = '';
+  setTimeout(function() {
+    window.close();
+    document.body.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;font-family:system-ui;text-align:center;padding:24px;background:#f0f4ff"><div style="font-size:48px;margin-bottom:16px">✅</div><div style="font-size:18px;font-weight:700;color:#1e3a8a;margin-bottom:8px">Présence enregistrée</div><div style="font-size:13px;color:#6b7280">Vous pouvez fermer cet onglet.</div></div>';
+  }, 100);
 }
 function spawnConfetti() {
   var wrap = document.getElementById('confettiWrap');
@@ -413,11 +417,11 @@ function spawnConfetti() {
 <!-- Overlay bienvenue -->
 <div class="welcome-overlay hidden" id="welcomeOverlay">
   <div class="w-logo-wrap"><img id="overlayLogo" src="" alt="MAPHAR"></div>
-  <div class="w-title">PrÃ©sence enregistrÃ©e !</div>
+  <div class="w-title">Présence enregistrée !</div>
   <div class="w-name-chip" id="wFullName"></div>
   <div class="w-reunion-txt" id="wReunion"></div>
   <div class="w-chips" id="wChips"></div>
-  <button class="w-close-btn" onclick="closeOverlay()">Fermer ð</button>
+  <button class="w-close-btn" onclick="closeOverlay()">Fermer 🎉</button>
 </div>
 <div class="confetti-wrap hidden" id="confettiWrap"></div>
 </body>

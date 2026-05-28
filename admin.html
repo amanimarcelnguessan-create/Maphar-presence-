@@ -26,6 +26,7 @@
     body.dark .histo-item{border-color:#334155}
     body.dark .card-title{color:#93c5fd}
     body.dark tbody td{color:#cbd5e1}
+    html,body{overflow-x:hidden;max-width:100vw}
     body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--bg);color:#0f172a;min-height:100vh}
 
     /* LOGIN */
@@ -63,7 +64,7 @@
     .tabs{background:#fff;border-bottom:2px solid var(--border);display:flex;padding:0 24px;position:sticky;top:58px;z-index:99}
     .tab{padding:14px 22px;font-size:13px;font-weight:700;color:var(--grey);border:none;background:none;cursor:pointer;border-bottom:3px solid transparent;transition:all .2s;margin-bottom:-2px;font-family:inherit}
     .tab.active{color:var(--blue);border-bottom-color:var(--blue)}
-    .content{padding:28px 24px;max-width:1080px;margin:0 auto}
+    .content{padding:16px;max-width:1080px;margin:0 auto;overflow-x:hidden}
     .panel{display:none}.panel.active{display:block}
 
     /* CARD */
@@ -73,6 +74,7 @@
     /* FORM */
     .f-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
     @media(max-width:640px){.f-grid{grid-template-columns:1fr}}
+    @media(max-width:640px){.content{padding:10px 8px}}
     .f-group label{display:block;font-size:11px;font-weight:700;color:var(--grey);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
     .f-group input,.f-group select{width:100%;padding:11px 14px;border:1.5px solid var(--border);border-radius:11px;font-family:inherit;font-size:14px;color:#111;background:#fafbff;outline:none;transition:border-color .2s,box-shadow .2s}
     .f-group input:focus,.f-group select:focus{border-color:var(--blue2);background:#fff;box-shadow:0 0 0 3px rgba(33,86,212,.08)}
@@ -363,7 +365,7 @@ service cloud.firestore {
       <div class="card">
         <div class="card-title">🗂️ Historique des réunions</div>
         <div class="no-print" style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:20px;align-items:flex-end">
-          <div class="f-group" style="margin:0;min-width:130px">
+          <div class="f-group" style="margin:0;min-width:100px;flex:1">
             <label>Mois</label>
             <select id="hMois" onchange="filterHistorique()">
               <option value="">Tous</option>
@@ -375,11 +377,11 @@ service cloud.firestore {
               <option value="11">Novembre</option><option value="12">Décembre</option>
             </select>
           </div>
-          <div class="f-group" style="margin:0;min-width:110px">
+          <div class="f-group" style="margin:0;min-width:90px;flex:1">
             <label>Année</label>
             <select id="hAnnee" onchange="filterHistorique()"><option value="">Toutes</option></select>
           </div>
-          <div class="f-group" style="margin:0;flex:1;min-width:180px">
+          <div class="f-group" style="margin:0;flex:2;min-width:140px">
             <label>Recherche globale (nom, prénom…)</label>
             <input type="text" id="hSearch" placeholder="🔍 Rechercher un membre…" oninput="globalSearch()">
           </div>

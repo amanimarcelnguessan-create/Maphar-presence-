@@ -67,7 +67,7 @@
   <img id="logoImg" src="" alt="MAPHAR" style="height:42px;width:42px;object-fit:contain;border-radius:6px;background:#fff;padding:2px;flex-shrink:0">
   <div class="top-bar-text" style="flex:1;min-width:0">
     <div class="org">MAPHAR</div>
-    <div class="sub">Bureau ExÃ©cutif</div>
+    <div class="sub">Bureau Exécutif</div>
   </div>
   <div class="badge-bex" style="flex-shrink:0">BEX</div>
   <span id="typeBadge" class="badge-type-bex"></span>
@@ -134,11 +134,11 @@
 <!-- Overlay bienvenue BEX -->
 <div class="welcome-overlay hidden" id="welcomeOverlay">
   <div class="w-logo-wrap"><img id="overlayLogo" src="" alt="MAPHAR"></div>
-  <div class="w-title">PrÃ©sence enregistrÃ©e !</div>
+  <div class="w-title">Présence enregistrée !</div>
   <div class="w-name-chip" id="wFullName"></div>
   <div class="w-reunion-txt" id="wReunion"></div>
   <div class="w-chips" id="wChips"></div>
-  <button class="w-close-btn" onclick="closeOverlay()">Fermer ð</button>
+  <button class="w-close-btn" onclick="closeOverlay()">Fermer 🎉</button>
 </div>
 <div class="confetti-wrap hidden" id="confettiWrap"></div>
 
@@ -168,10 +168,10 @@ function setForm(v){ document.getElementById('formWrap').classList.toggle('show'
 function showWelcomeOverlay(membre) {
   var d = reunion || {};
   var tMap = {
-    RMB:'RÃ©union mensuelle du Bureau ExÃ©cutif',
-    RPA:'RÃ©union avec les partenaires',
-    RPP:'RÃ©union paritaire avec le partenaire principal',
-    AUTRE:'Autre rÃ©union'
+    RMB:'Réunion mensuelle du Bureau Exécutif',
+    RPA:'Réunion avec les partenaires',
+    RPP:'Réunion paritaire avec le partenaire principal',
+    AUTRE:'Autre réunion'
   };
   var typeLabel = tMap[d.typeReunion] || tMap.RMB;
   var logoEl = document.getElementById('logoImg');
@@ -182,10 +182,10 @@ function showWelcomeOverlay(membre) {
   if (d.label) html += '<br>' + d.label;
   document.getElementById('wReunion').innerHTML = html;
   var chips = [];
-  if (d.date) chips.push('ð ' + new Date(d.date+'T00:00:00').toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'}));
-  if (d.lieu) chips.push('ð ' + d.lieu);
-  if (membre && membre.fonction) chips.push('ð·ï¸ ' + membre.fonction);
-  chips.push('â PrÃ©sence enregistrÃ©e');
+  if (d.date) chips.push('📅 ' + new Date(d.date+'T00:00:00').toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'}));
+  if (d.lieu) chips.push('📍 ' + d.lieu);
+  if (membre && membre.fonction) chips.push('🏷️ ' + membre.fonction);
+  chips.push('✅ Présence enregistrée');
   document.getElementById('wChips').innerHTML = chips.map(function(c){ return '<div class="w-chip">'+c+'</div>'; }).join('');
   document.getElementById('welcomeOverlay').classList.remove('hidden');
   document.getElementById('confettiWrap').classList.remove('hidden');
@@ -195,6 +195,12 @@ function closeOverlay() {
   document.getElementById('welcomeOverlay').classList.add('hidden');
   document.getElementById('confettiWrap').classList.add('hidden');
   document.getElementById('confettiWrap').innerHTML = '';
+  // Fermer l'onglet (ouvert via QR code)
+  setTimeout(function() {
+    window.close();
+    // Fallback si window.close() bloqué par le navigateur
+    document.body.innerHTML = '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;font-family:system-ui;text-align:center;padding:24px;background:#f4f9f4"><div style="font-size:48px;margin-bottom:16px">✅</div><div style="font-size:18px;font-weight:700;color:#2d7a3a;margin-bottom:8px">Présence enregistrée</div><div style="font-size:13px;color:#6b7280">Vous pouvez fermer cet onglet.</div></div>';
+  }, 100);
 }
 function spawnConfetti() {
   var wrap = document.getElementById('confettiWrap');
