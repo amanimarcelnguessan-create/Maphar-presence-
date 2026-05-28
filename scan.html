@@ -53,12 +53,10 @@
     .spinner{width:40px;height:40px;border:4px solid rgba(22,65,164,.15);border-top-color:var(--blue);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 16px}
     @keyframes spin{to{transform:rotate(360deg)}}
 
-    /* Badge type réunion */
-    .type-badge{display:inline-block;border-radius:20px;padding:3px 12px;font-size:11px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;margin-top:6px;color:#fff;background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.35)}
-
-    /* Overlay bienvenue */
     .welcome-overlay{position:fixed;inset:0;background:rgba(15,37,87,.96);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999;padding:24px;text-align:center}
     .welcome-overlay.hidden{display:none}
+    .confetti-wrap{position:fixed;inset:0;pointer-events:none;z-index:998;overflow:hidden}
+    .confetti-wrap.hidden{display:none}
     .w-logo-wrap{width:72px;height:72px;border-radius:12px;background:#fff;padding:4px;margin-bottom:12px}
     .w-logo-wrap img{width:64px;height:64px;object-fit:contain;border-radius:8px}
     .w-title{font-size:22px;font-weight:800;color:#fff;margin-bottom:6px}
@@ -67,9 +65,9 @@
     .w-chips{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-bottom:22px}
     .w-chip{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);border-radius:20px;padding:4px 12px;font-size:12px;color:rgba(255,255,255,.85)}
     .w-close-btn{background:#22c55e;color:#fff;border:none;border-radius:14px;padding:14px 32px;font-size:15px;font-weight:700;cursor:pointer}
-    .confetti-wrap{position:fixed;inset:0;pointer-events:none;z-index:998;overflow:hidden}
     .c{position:absolute;top:-12px;width:8px;height:8px;border-radius:2px;animation:fall linear infinite}
     @keyframes fall{to{transform:translateY(110vh) rotate(720deg)}}
+    .type-badge{display:none;background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.35);color:#fff;font-size:10px;font-weight:700;letter-spacing:.7px;padding:3px 10px;border-radius:20px;text-transform:uppercase;margin-top:6px}
   </style>
 </head>
 <body>
@@ -85,7 +83,7 @@
 <div class="card">
   <div class="card-header">
     <div class="h-title">📋 Feuille de Présence</div>
-    <div id="typeBadge" class="type-badge" style="display:none"></div>
+    <div id="typeBadge" class="type-badge"></div>
     <div class="meeting-strip">
       <div class="m-name" id="mName">Chargement...</div>
       <div class="m-date" id="mDate"></div>
@@ -104,9 +102,7 @@
   <div id="formView" style="display:none">
     <div class="form-body">
       <div class="already-warn" id="alreadyWarn">⚠️ Vous avez déjà enregistré votre présence pour cette réunion.</div>
-      <div class="form-lead">✍️ Saisissez vos informations pour enregistrer votre présence :</div>
-
-      <div id="manualFields">
+            <div id="manualFields">
         <div class="field">
           <label>NOM <span class="req">*</span></label>
           <input type="text" id="f-nom" placeholder="Votre nom de famille" autocomplete="family-name">
@@ -180,18 +176,6 @@
 
 <div class="page-footer">MAPHAR © 2026 – Présences numériques</div>
 
-
-<!-- Overlay bienvenue -->
-<div class="welcome-overlay hidden" id="welcomeOverlay">
-  <div class="w-logo-wrap"><img id="overlayLogo" src="" alt="MAPHAR"></div>
-  <div class="w-title">Présence enregistrée !</div>
-  <div class="w-name-chip" id="wFullName"></div>
-  <div class="w-reunion-txt" id="wReunion"></div>
-  <div class="w-chips" id="wChips"></div>
-  <button class="w-close-btn" onclick="closeOverlay()">Fermer 🎉</button>
-</div>
-<div class="confetti-wrap hidden" id="confettiWrap"></div>
-
 <script>
 // ═══════════════════════════════════════════════
 // ⚙️  CONFIGURATION FIREBASE  —  À COMPLÉTER
@@ -216,6 +200,7 @@ function show(id) {
 }
 
 let db = null;
+let _reunionData = null;
 
 async function loadFirebase() {
   return new Promise((resolve, reject) => {
@@ -237,60 +222,6 @@ async function loadFirebase() {
   });
 }
 
-// ── Variable réunion (pour l'overlay)
-let reunionData = null;
-
-// ── Overlay bienvenue
-function showWelcomeOverlay(prenom, nom, fonction, d) {
-  const tMap={RMB:'Réunion mensuelle du Bureau Exécutif',RPA:'Réunion avec les partenaires',RPP:'Réunion paritaire avec le partenaire principal',AUTRE:'Autre réunion'};
-  const tKey=(d&&d.typeReunion)||'RMB';
-  const typeLabel=tMap[tKey]||tMap.RMB;
-
-  // Logo
-  const logoEl=document.querySelector('.brand-shield img');
-  if(logoEl) document.getElementById('overlayLogo').src=logoEl.src;
-
-  document.getElementById('wFullName').textContent=nom.toUpperCase()+' '+prenom;
-  let html='<strong>'+typeLabel+'</strong>';
-  if(d&&d.label) html+='<br>'+d.label;
-  document.getElementById('wReunion').innerHTML=html;
-
-  const chips=[];
-  if(d&&d.date){const ds=new Date(d.date+'T00:00:00').toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});chips.push('📅 '+ds);}
-  if(d&&d.lieu) chips.push('📍 '+d.lieu);
-  if(fonction) chips.push('🏷️ '+fonction);
-  chips.push('✅ Présence enregistrée');
-  document.getElementById('wChips').innerHTML=chips.map(c=>'<div class="w-chip">'+c+'</div>').join('');
-
-  document.getElementById('welcomeOverlay').classList.remove('hidden');
-  document.getElementById('confettiWrap').classList.remove('hidden');
-  spawnConfetti();
-}
-
-function closeOverlay(){
-  document.getElementById('welcomeOverlay').classList.add('hidden');
-  document.getElementById('confettiWrap').classList.add('hidden');
-  document.getElementById('confettiWrap').innerHTML='';
-}
-
-function spawnConfetti(){
-  const wrap=document.getElementById('confettiWrap');
-  wrap.innerHTML='';
-  const colors=['#22c55e','#3b82f6','#f59e0b','#ec4899','#8b5cf6','#06b6d4'];
-  for(let i=0;i<60;i++){
-    const el=document.createElement('div');
-    el.className='c';
-    el.style.left=Math.random()*100+'vw';
-    el.style.background=colors[Math.floor(Math.random()*colors.length)];
-    el.style.animationDuration=(2+Math.random()*3)+'s';
-    el.style.animationDelay=(Math.random()*2)+'s';
-    el.style.width=(6+Math.random()*8)+'px';
-    el.style.height=el.style.width;
-    wrap.appendChild(el);
-  }
-}
-
-
 async function init() {
   if (!reunionId) { show('errorView'); return; }
   try {
@@ -298,13 +229,10 @@ async function init() {
     const snap = await db.collection('maphar_reunions').doc(reunionId).get();
     if (!snap.exists) { show('errorView'); return; }
     const d = snap.data();
-    // Badge type réunion dynamique
-    const tMap={RMB:'Réunion Bureau Exécutif',RPA:'Réunion Partenaires',RPP:'Réunion Paritaire',AUTRE:'Autre réunion'};
-    const tKey=d.typeReunion||'RMB';
-    const tBadge=document.getElementById('typeBadge');
-    tBadge.textContent=(tMap[tKey]||tKey).toUpperCase();
-    tBadge.style.display='inline-block';
-    reunionData = d;
+    _reunionData = d;
+    const _tb=document.getElementById('typeBadge');
+    const _tm={RMB:'RÃ©union Bureau ExÃ©cutif',RPA:'RÃ©union Partenaires',RPP:'RÃ©union Paritaire',AUTRE:'Autre rÃ©union'};
+    if(_tb){_tb.textContent=(_tm[d.typeReunion]||_tm.RMB).toUpperCase();_tb.style.display='inline-block';}
     document.getElementById('mName').textContent = d.label || 'Réunion Bureau Exécutif';
     if (d.date) {
       const dt = new Date(d.date+'T00:00:00');
@@ -313,14 +241,13 @@ async function init() {
     if (localStorage.getItem('signed_'+reunionId)) {
       document.getElementById('alreadyWarn').style.display='block';
     }
-    show('formView');
+        show('formView');
     setTimeout(initSig, 100);
   } catch(e) {
     console.error(e);
     show('errorView');
   }
 }
-
 
 
 // ── Signature pad
@@ -424,9 +351,7 @@ async function handleSubmit() {
       timestamp: firebase.firestore.FieldValue.serverTimestamp()
     });
     localStorage.setItem('signed_'+reunionId,'1');
-    document.getElementById('s-fullname').textContent = prenom+' '+nom.toUpperCase();
-    show('successView');
-    showWelcomeOverlay(prenom, nom, fonction, reunionData);
+    showWelcomeOverlay(prenom, nom, fonction);
   } catch(e) {
     console.error(e);
     btn.disabled = false;
@@ -436,6 +361,64 @@ async function handleSubmit() {
 }
 
 init();
+// ── Overlay bienvenue
+function showWelcomeOverlay(prenom, nom, fonction) {
+  var d = _reunionData || {};
+  var tMap = {
+    RMB:'Réunion mensuelle du Bureau Exécutif',
+    RPA:'Réunion avec les partenaires',
+    RPP:'Réunion paritaire avec le partenaire principal',
+    AUTRE:'Autre réunion'
+  };
+  var typeLabel = tMap[d.typeReunion] || tMap.RMB;
+  var logoEl = document.querySelector('.brand-shield img');
+  if (logoEl && logoEl.complete && logoEl.naturalWidth > 0)
+    document.getElementById('overlayLogo').src = logoEl.src;
+  document.getElementById('wFullName').textContent = nom.toUpperCase() + ' ' + prenom;
+  var html = '<strong>' + typeLabel + '</strong>';
+  if (d.label) html += '<br>' + d.label;
+  document.getElementById('wReunion').innerHTML = html;
+  var chips = [];
+  if (d.date) chips.push('📅 ' + new Date(d.date+'T00:00:00').toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'}));
+  if (d.lieu) chips.push('📍 ' + d.lieu);
+  if (fonction) chips.push('🏷️ ' + fonction);
+  chips.push('✅ Présence enregistrée');
+  document.getElementById('wChips').innerHTML = chips.map(function(c){ return '<div class="w-chip">'+c+'</div>'; }).join('');
+  document.getElementById('welcomeOverlay').classList.remove('hidden');
+  document.getElementById('confettiWrap').classList.remove('hidden');
+  spawnConfetti();
+}
+function closeOverlay() {
+  document.getElementById('welcomeOverlay').classList.add('hidden');
+  document.getElementById('confettiWrap').classList.add('hidden');
+  document.getElementById('confettiWrap').innerHTML = '';
+}
+function spawnConfetti() {
+  var wrap = document.getElementById('confettiWrap');
+  wrap.innerHTML = '';
+  var colors = ['#22c55e','#3b82f6','#f59e0b','#ec4899','#8b5cf6','#06b6d4'];
+  for (var i = 0; i < 60; i++) {
+    var el = document.createElement('div'); el.className = 'c';
+    el.style.left = Math.random()*100 + 'vw';
+    el.style.background = colors[Math.floor(Math.random()*colors.length)];
+    el.style.animationDuration = (2 + Math.random()*3) + 's';
+    el.style.animationDelay = (Math.random()*2) + 's';
+    el.style.width = (6 + Math.random()*8) + 'px';
+    el.style.height = el.style.width;
+    wrap.appendChild(el);
+  }
+}
 </script>
+
+<!-- Overlay bienvenue -->
+<div class="welcome-overlay hidden" id="welcomeOverlay">
+  <div class="w-logo-wrap"><img id="overlayLogo" src="" alt="MAPHAR"></div>
+  <div class="w-title">PrÃ©sence enregistrÃ©e !</div>
+  <div class="w-name-chip" id="wFullName"></div>
+  <div class="w-reunion-txt" id="wReunion"></div>
+  <div class="w-chips" id="wChips"></div>
+  <button class="w-close-btn" onclick="closeOverlay()">Fermer ð</button>
+</div>
+<div class="confetti-wrap hidden" id="confettiWrap"></div>
 </body>
 </html>

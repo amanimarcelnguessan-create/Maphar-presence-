@@ -8,11 +8,10 @@
   :root{--navy:#2d7a3a;--blue:#2d7a3a;--red:#dc2626;--green:#2d7a3a;--brown:#6b3a2a;--border:#d4e6d6;--bg:#f4f9f4;--radius:14px}
   *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
   body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;background:var(--bg);min-height:100vh;display:flex;flex-direction:column;align-items:center}
-  .top-bar{width:100%;background:var(--navy);padding:12px 16px;display:flex;align-items:center;gap:10px;margin-bottom:20px}
+  .top-bar{width:100%;background:var(--navy);padding:14px 18px;display:flex;align-items:center;gap:10px;margin-bottom:20px}
   .top-bar-text .org{color:#fff;font-weight:800;font-size:15px;letter-spacing:1px}
   .top-bar-text .sub{color:#c8e6ca;font-size:11px;margin-top:1px}
-  .badge-bex{background:#6b3a2a;color:#fff;font-size:10px;font-weight:700;letter-spacing:1px;padding:3px 9px;border-radius:20px;text-transform:uppercase;flex-shrink:0}
-  .badge-type-reunion{display:none;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.35);color:#fff;font-size:9px;font-weight:700;letter-spacing:.8px;padding:2px 8px;border-radius:20px;text-transform:uppercase;white-space:nowrap;margin-left:6px;flex-shrink:0}
+  .badge-bex{background:#6b3a2a;color:#fff;font-size:10px;font-weight:700;letter-spacing:1px;padding:3px 9px;border-radius:20px;text-transform:uppercase;margin-left:auto;white-space:nowrap}
   .container{width:100%;max-width:440px;padding:0 14px}
   .card{background:#fff;border-radius:var(--radius);border:1px solid var(--border);padding:18px;margin-bottom:14px;box-shadow:0 1px 4px rgba(0,0,0,.05)}
   .card-title{font-size:13px;font-weight:700;color:var(--navy);margin-bottom:12px}
@@ -27,9 +26,11 @@
   .sig-hint{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#9ca3af;font-size:13px;pointer-events:none;transition:opacity .2s}
   .btn-submit{width:100%;background:var(--navy);color:#fff;border:none;border-radius:12px;padding:15px;font-size:15px;font-weight:700;cursor:pointer;margin-top:4px;transition:opacity .2s}
   .btn-submit:disabled{opacity:.5;cursor:not-allowed}
+  /* Infos réunion */
   .reunion-info{background:#f1f8f2;border:1px solid #a5d6a7;border-radius:10px;padding:12px 14px;margin-bottom:14px}
   .reunion-info .r-label{font-weight:700;color:var(--navy);font-size:14px}
   .reunion-info .r-meta{font-size:12px;color:#4b5563;margin-top:3px}
+  /* États plein-écran */
   .state{display:none;flex-direction:column;align-items:center;justify-content:center;min-height:70vh;gap:14px;padding:24px;text-align:center}
   .state.show{display:flex}
   .spinner{width:40px;height:40px;border:4px solid #e2e8f0;border-top-color:var(--navy);border-radius:50%;animation:spin 1s linear infinite}
@@ -40,9 +41,11 @@
   #formWrap{display:none}
   #formWrap.show{display:block}
 
-  /* ── Overlay bienvenue ── */
+  /* ── Overlay bienvenue BEX ── */
   .welcome-overlay{position:fixed;inset:0;background:rgba(20,65,37,.96);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999;padding:24px;text-align:center}
   .welcome-overlay.hidden{display:none}
+  .confetti-wrap{position:fixed;inset:0;pointer-events:none;z-index:998;overflow:hidden}
+  .confetti-wrap.hidden{display:none}
   .w-logo-wrap{width:72px;height:72px;border-radius:12px;background:#fff;padding:4px;margin-bottom:12px}
   .w-logo-wrap img{width:64px;height:64px;object-fit:contain;border-radius:8px}
   .w-title{font-size:22px;font-weight:800;color:#fff;margin-bottom:6px}
@@ -51,12 +54,10 @@
   .w-chips{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-bottom:22px}
   .w-chip{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);border-radius:20px;padding:4px 12px;font-size:12px;color:rgba(255,255,255,.85)}
   .w-close-btn{background:#22c55e;color:#fff;border:none;border-radius:14px;padding:14px 32px;font-size:15px;font-weight:700;cursor:pointer}
-
-  /* ── Confettis ── */
-  .confetti-wrap{position:fixed;inset:0;pointer-events:none;z-index:998;overflow:hidden}
   .c{position:absolute;top:-12px;width:8px;height:8px;border-radius:2px;animation:fall linear infinite}
   @keyframes fall{to{transform:translateY(110vh) rotate(720deg)}}
-  @keyframes popIn{from{transform:scale(0)}to{transform:scale(1)}}
+  /* Badge type réunion */
+  .badge-type-bex{display:none;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.35);color:#fff;font-size:9px;font-weight:700;padding:2px 8px;border-radius:20px;letter-spacing:.7px;text-transform:uppercase;margin-left:6px;flex-shrink:0}
 </style>
 </head>
 <body>
@@ -66,10 +67,14 @@
   <img id="logoImg" src="" alt="MAPHAR" style="height:42px;width:42px;object-fit:contain;border-radius:6px;background:#fff;padding:2px;flex-shrink:0">
   <div class="top-bar-text" style="flex:1;min-width:0">
     <div class="org">MAPHAR</div>
-    <div class="sub">Bureau Exécutif</div>
+    <div class="sub">Bureau ExÃ©cutif</div>
   </div>
-  <div class="badge-bex">BEX</div>
-  <div id="typeBadge" class="badge-type-reunion"></div>
+  <div class="badge-bex" style="flex-shrink:0">BEX</div>
+  <span id="typeBadge" class="badge-type-bex"></span>
+</div>
+    <div class="sub">Mutuelle pour l'Assurance des Pharmaciens</div>
+  </div>
+  <div class="badge-bex">Bureau Exécutif</div>
 </div>
 
 <!-- CHARGEMENT -->
@@ -129,11 +134,11 @@
 <!-- Overlay bienvenue BEX -->
 <div class="welcome-overlay hidden" id="welcomeOverlay">
   <div class="w-logo-wrap"><img id="overlayLogo" src="" alt="MAPHAR"></div>
-  <div class="w-title">Présence enregistrée !</div>
+  <div class="w-title">PrÃ©sence enregistrÃ©e !</div>
   <div class="w-name-chip" id="wFullName"></div>
   <div class="w-reunion-txt" id="wReunion"></div>
   <div class="w-chips" id="wChips"></div>
-  <button class="w-close-btn" onclick="closeOverlay()">Fermer 🎉</button>
+  <button class="w-close-btn" onclick="closeOverlay()">Fermer ð</button>
 </div>
 <div class="confetti-wrap hidden" id="confettiWrap"></div>
 
@@ -158,57 +163,55 @@ function show(id)  { document.getElementById(id).classList.add('show'); }
 function hide(id)  { document.getElementById(id).classList.remove('show'); }
 function setForm(v){ document.getElementById('formWrap').classList.toggle('show', v); }
 
+// ── Init Firebase + chargement
 // ── Overlay bienvenue BEX
 function showWelcomeOverlay(membre) {
-  const d = reunion || {};
-  const tMap={RMB:'Réunion mensuelle du Bureau Exécutif',RPA:'Réunion avec les partenaires',RPP:'Réunion paritaire avec le partenaire principal',AUTRE:'Autre réunion'};
-  const typeLabel=tMap[d.typeReunion]||tMap.RMB;
-
-  // Logo depuis la top-bar
-  const logoSrc=document.getElementById('logoImg').src;
-  document.getElementById('overlayLogo').src=logoSrc;
-
-  document.getElementById('wFullName').textContent=(membre?.nom||'').toUpperCase()+' '+(membre?.prenom||'');
-  let html='<strong>'+typeLabel+'</strong>';
-  if(d.label) html+='<br>'+d.label;
-  document.getElementById('wReunion').innerHTML=html;
-
-  const chips=[];
-  if(d.date){const ds=new Date(d.date+'T00:00:00').toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});chips.push('📅 '+ds);}
-  if(d.lieu) chips.push('📍 '+d.lieu);
-  if(membre?.fonction) chips.push('🏷️ '+membre.fonction);
-  chips.push('✅ Présence enregistrée');
-  document.getElementById('wChips').innerHTML=chips.map(c=>'<div class="w-chip">'+c+'</div>').join('');
-
+  var d = reunion || {};
+  var tMap = {
+    RMB:'RÃ©union mensuelle du Bureau ExÃ©cutif',
+    RPA:'RÃ©union avec les partenaires',
+    RPP:'RÃ©union paritaire avec le partenaire principal',
+    AUTRE:'Autre rÃ©union'
+  };
+  var typeLabel = tMap[d.typeReunion] || tMap.RMB;
+  var logoEl = document.getElementById('logoImg');
+  if (logoEl && logoEl.complete && logoEl.naturalWidth > 0)
+    document.getElementById('overlayLogo').src = logoEl.src;
+  document.getElementById('wFullName').textContent = (membre && membre.nom ? membre.nom.toUpperCase() : '') + ' ' + (membre && membre.prenom ? membre.prenom : '');
+  var html = '<strong>' + typeLabel + '</strong>';
+  if (d.label) html += '<br>' + d.label;
+  document.getElementById('wReunion').innerHTML = html;
+  var chips = [];
+  if (d.date) chips.push('ð ' + new Date(d.date+'T00:00:00').toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'}));
+  if (d.lieu) chips.push('ð ' + d.lieu);
+  if (membre && membre.fonction) chips.push('ð·ï¸ ' + membre.fonction);
+  chips.push('â PrÃ©sence enregistrÃ©e');
+  document.getElementById('wChips').innerHTML = chips.map(function(c){ return '<div class="w-chip">'+c+'</div>'; }).join('');
   document.getElementById('welcomeOverlay').classList.remove('hidden');
   document.getElementById('confettiWrap').classList.remove('hidden');
   spawnConfetti();
 }
-
-function closeOverlay(){
+function closeOverlay() {
   document.getElementById('welcomeOverlay').classList.add('hidden');
   document.getElementById('confettiWrap').classList.add('hidden');
-  document.getElementById('confettiWrap').innerHTML='';
+  document.getElementById('confettiWrap').innerHTML = '';
 }
-
-function spawnConfetti(){
-  const wrap=document.getElementById('confettiWrap');
-  wrap.innerHTML='';
-  const colors=['#22c55e','#2d7a3a','#86efac','#f59e0b','#3b82f6','#8b5cf6'];
-  for(let i=0;i<60;i++){
-    const el=document.createElement('div');
-    el.className='c';
-    el.style.left=Math.random()*100+'vw';
-    el.style.background=colors[Math.floor(Math.random()*colors.length)];
-    el.style.animationDuration=(2+Math.random()*3)+'s';
-    el.style.animationDelay=(Math.random()*2)+'s';
-    el.style.width=(6+Math.random()*8)+'px';
-    el.style.height=el.style.width;
+function spawnConfetti() {
+  var wrap = document.getElementById('confettiWrap');
+  wrap.innerHTML = '';
+  var colors = ['#22c55e','#2d7a3a','#86efac','#f59e0b','#3b82f6','#8b5cf6'];
+  for (var i = 0; i < 60; i++) {
+    var el = document.createElement('div'); el.className = 'c';
+    el.style.left = Math.random()*100 + 'vw';
+    el.style.background = colors[Math.floor(Math.random()*colors.length)];
+    el.style.animationDuration = (2 + Math.random()*3) + 's';
+    el.style.animationDelay = (Math.random()*2) + 's';
+    el.style.width = (6 + Math.random()*8) + 'px';
+    el.style.height = el.style.width;
     wrap.appendChild(el);
   }
 }
 
-// ── Init Firebase + chargement
 async function init() {
   const params   = new URLSearchParams(location.search);
   const reunionId = params.get('reunion');
@@ -223,11 +226,12 @@ async function init() {
     const rdoc = await db.collection('maphar_reunions').doc(reunionId).get();
     if (!rdoc.exists) { hide('stateLoading'); show('stateError'); return; }
     reunion = { id: rdoc.id, ...rdoc.data() };
-    // Badge type réunion dynamique
-    const _tMap={RMB:'RMB',RPA:'RPA',RPP:'RPP',AUTRE:'AUTRE'};
-    const _tKey=reunion.typeReunion||'RMB';
-    const _badge=document.getElementById('typeBadge');
-    if(_badge){_badge.textContent=_tMap[_tKey]||_tKey; _badge.style.display='inline-block';}
+    var _tb = document.getElementById('typeBadge');
+    if (_tb) {
+      var _tm = {RMB:'RMB',RPA:'RPA',RPP:'RPP',AUTRE:'AUTRE'};
+      _tb.textContent = _tm[reunion.typeReunion] || 'RMB';
+      _tb.style.display = 'inline-block';
+    }
 
     // Afficher les infos réunion
     document.getElementById('rLabel').textContent = reunion.label || 'Réunion MAPHAR';
