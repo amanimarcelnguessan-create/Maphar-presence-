@@ -515,6 +515,12 @@ service cloud.firestore {
         <div id="st-top-membres"><div class="empty-tbl"><div class="e-icon">📊</div><div class="e-title">Chargement…</div></div></div>
       </div>
 
+      <!-- Participants hors BEX (partenaires, invités, personnel non-BEX) -->
+      <div class="card" style="margin-bottom:14px">
+        <div class="card-title"><span>🤝 Autres participants (hors BEX)</span></div>
+        <div id="st-top-invites"><div class="empty-tbl"><div class="e-icon">📊</div><div class="e-title">Chargement…</div></div></div>
+      </div>
+
       <!-- Détail par réunion -->
       <div class="card">
         <div class="card-title">📅 Détail par réunion</div>
@@ -1565,7 +1571,7 @@ async function buildStats() {
     const avecQuorum=allReunions.filter(r=>all.filter(p=>p.reunionId===r.id).length>=qSeuil).length;
 
     // Assidus >= 75%
-    const assidus=entries.filter(e=>totalR>0&&(e.rs.size/totalR)>=0.75).length;
+    const assidus=entries.filter(e=>e.isMembre&&totalR>0&&(e.rs.size/totalR)>=0.75).length;
 
     // KPIs
     document.getElementById('st-total-reunions').textContent  = totalR;
@@ -1638,22 +1644,19 @@ async function buildStats() {
       return Object.values(c);
     }
 
-    function renderTopList(entriesForType, totalRType){
-      const membresEntries = entriesForType.filter(e=>e.isMembre).sort((a,b)=>b.count-a.count);
-      const invitesEntries = entriesForType.filter(e=>!e.isMembre).sort((a,b)=>b.count-a.count).slice(0,5);
-      const topList = [...membresEntries, ...invitesEntries];
-      if(!topList.length) return '<div class="empty-tbl"><div class="e-icon">👥</div><div class="e-title">Aucune présence enregistrée</div></div>';
-      const maxC=Math.max(...entriesForType.map(e=>e.count),1);
-      return '<div class="top-membres-grid">'+topList.map(({lbl,count,rs,isMembre},i)=>{
+    function renderTopList(sortedEntries, totalRType, opts){
+      opts = opts || {};
+      if(!sortedEntries.length) return '<div class="empty-tbl"><div class="e-icon">👥</div><div class="e-title">'+(opts.emptyMsg||'Aucune présence enregistrée')+'</div></div>';
+      const maxC=Math.max(...sortedEntries.map(e=>e.count),1);
+      return '<div class="top-membres-grid">'+sortedEntries.map(({lbl,count,rs},i)=>{
         const t=totalRType>0?Math.round((rs.size/totalRType)*100):0;
-        const m=i===0?'🥇':i===1?'🥈':i===2?'🥉':'';
+        const m=opts.medals&&i===0?'🥇':opts.medals&&i===1?'🥈':opts.medals&&i===2?'🥉':'';
         const c=t>=75?'var(--green)':t>=50?'#d97706':'var(--red)';
-        const lblDisp=esc(lbl)+(isMembre?'':' <span style="opacity:.55;font-weight:500">(invité)</span>');
         return '<div style="display:flex;align-items:center;gap:6px">'
           +'<span style="font-size:13px;width:16px;flex-shrink:0">'+(m||'·')+'</span>'
           +'<div style="flex:1;min-width:0">'
           +'<div style="display:flex;justify-content:space-between">'
-          +'<span style="font-size:11px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:120px">'+lblDisp+'</span>'
+          +'<span style="font-size:11px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:120px">'+esc(lbl)+'</span>'
           +'<span style="font-size:11px;font-weight:700;color:'+c+';flex-shrink:0;margin-left:4px">'+t+'%</span></div>'
           +'<div style="height:4px;background:var(--border);border-radius:2px;margin-top:2px">'
           +'<div style="height:4px;background:var(--blue);border-radius:2px;width:'+Math.round(count/maxC*100)+'%"></div></div>'
@@ -1663,15 +1666,33 @@ async function buildStats() {
     }
 
     const typeKeys=['RMB','RPA','RPP','TRN','AUTRE'];
+
+    // FIX : "Assiduité des membres BEX" doit contenir EXCLUSIVEMENT les membres du BEX (liste
+    // officielle maphar_membres, via membreById) — plus aucun invité/partenaire ne s'y mélange,
+    // même en fin de liste comme avant.
     document.getElementById('st-top-membres').innerHTML = typeKeys.map(k=>{
       const totalRType = allReunions.filter(r=>(r.typeReunion||'RMB')===k).length;
       if(!totalRType) return '';
-      const entriesForType = buildCompteurForType(k);
+      const membresEntries = buildCompteurForType(k).filter(e=>e.isMembre).sort((a,b)=>b.count-a.count);
+      if(!membresEntries.length) return '';
       return '<div style="margin-bottom:18px">'
         +'<div style="font-size:12px;font-weight:700;color:var(--blue);margin-bottom:8px">'+tMap[k]+' <span style="font-weight:500;color:var(--grey)">('+totalRType+' réunion(s))</span></div>'
-        +renderTopList(entriesForType, totalRType)
+        +renderTopList(membresEntries, totalRType, {medals:true})
         +'</div>';
-    }).join('') || '<div class="empty-tbl"><div class="e-icon">📊</div><div class="e-title">Aucune donnée</div></div>';
+    }).join('') || '<div class="empty-tbl"><div class="e-icon">📊</div><div class="e-title">Aucune présence de membre BEX enregistrée</div></div>';
+
+    // Autres participants (hors BEX) : partenaires, invités, personnel non listé dans maphar_membres —
+    // suivis à part, sans plafond arbitraire, car un partenaire (ex. AXA-CI) peut revenir à chaque RPP.
+    document.getElementById('st-top-invites').innerHTML = typeKeys.map(k=>{
+      const totalRType = allReunions.filter(r=>(r.typeReunion||'RMB')===k).length;
+      if(!totalRType) return '';
+      const invitesEntries = buildCompteurForType(k).filter(e=>!e.isMembre).sort((a,b)=>b.count-a.count);
+      if(!invitesEntries.length) return '';
+      return '<div style="margin-bottom:18px">'
+        +'<div style="font-size:12px;font-weight:700;color:#166534;margin-bottom:8px">'+tMap[k]+' <span style="font-weight:500;color:var(--grey)">('+totalRType+' réunion(s))</span></div>'
+        +renderTopList(invitesEntries, totalRType, {medals:false})
+        +'</div>';
+    }).join('') || '<div class="empty-tbl"><div class="e-icon">🤝</div><div class="e-title">Aucun participant hors BEX enregistré</div></div>';
 
     // Détail par réunion
     const parR=allReunions.map(r=>{
