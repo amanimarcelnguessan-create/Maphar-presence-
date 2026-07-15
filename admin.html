@@ -332,10 +332,12 @@ service cloud.firestore {
               <button class="btn btn-outline" onclick="printQR('bex')" style="border-color:#0f2557;color:#0f2557">🖨️ Imprimer QR Bureau Exécutif</button>
               <button class="btn btn-outline" onclick="printQR('autre')" style="border-color:#166534;color:#166534">🖨️ Imprimer QR Autres participants</button>
               <button class="btn btn-primary" onclick="goToPresences()">👥 Voir les présences</button>
-              <button class="btn" style="background:#25D366;color:#fff" onclick="shareWhatsApp()">📱 WhatsApp</button>
+              <button class="btn" style="background:#25D366;color:#fff" onclick="shareWhatsApp('bex')">📱 WhatsApp – BEX</button>
+              <button class="btn" style="background:#128C7E;color:#fff" onclick="shareWhatsApp('autre')">📱 WhatsApp – Autres participants</button>
             </div>
             <div class="divider no-print"></div>
-            <div style="font-size:11px;color:var(--grey)" class="no-print">🔗 <span id="qrUrl" style="word-break:break-all"></span></div>
+            <div style="font-size:11px;color:var(--grey)" class="no-print">🔗 <b>BEX :</b> <span id="qrUrlBex" style="word-break:break-all"></span></div>
+            <div style="font-size:11px;color:var(--grey);margin-top:4px" class="no-print">🔗 <b>Autres :</b> <span id="qrUrl" style="word-break:break-all"></span></div>
           </div>
         </div>
       </div>
@@ -755,6 +757,7 @@ function renderQR() {
   document.getElementById('qrReady').style.display='block';
   document.getElementById('qrName').textContent = selectedR.label||'Réunion MAPHAR';
   document.getElementById('qrUrl').textContent  = urlAutre;
+  document.getElementById('qrUrlBex').textContent = urlBex;
   document.getElementById('qrImgBex').src = buildQrImageUrl(urlBex);
   document.getElementById('qrImg').src    = buildQrImageUrl(urlAutre);
   const ds = selectedR.date
@@ -1692,12 +1695,20 @@ function toggleDark() {
   document.getElementById('darkBtn').textContent = isDark ? '☀️' : '🌙';
 }
 
-function shareWhatsApp() {
+function shareWhatsApp(type) {
   if (!selectedR) return;
-  const url  = buildScanUrl(selectedR.id);
-  const ds   = selectedR.date ? new Date(selectedR.date+'T00:00:00').toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'}) : '';
-  const lieu = selectedR.lieu ? `\n📍 Lieu : ${selectedR.lieu}` : '';
-  const msg  = `📋 *MAPHAR – Feuille de présence*\n\n*${selectedR.label}*\n📅 ${ds}${lieu}\n\n✍️ Veuillez cliquer sur le lien ci-dessous pour enregistrer votre présence :\n${url}`;
+  // FIX : le bouton unique envoyait toujours le lien "Autres participants" (scan.html), même
+  // pour convoquer les membres du BEX — ceux-ci arrivaient donc sur le formulaire libre sans
+  // sélection de membre, et leur présence n'était jamais rattachée à leur fiche (pas de membreId).
+  const isBex = type === 'bex';
+  const url   = isBex ? `${CONFIG.baseUrl}/scan-bex.html?reunion=${selectedR.id}` : buildScanUrl(selectedR.id);
+  const ds    = selectedR.date ? new Date(selectedR.date+'T00:00:00').toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'}) : '';
+  const lieu  = selectedR.lieu ? `\n📍 Lieu : ${selectedR.lieu}` : '';
+  const dest  = isBex ? '👥 *Réservé aux membres du Bureau Exécutif*\n\n' : '';
+  const consigne = isBex
+    ? '✍️ Veuillez cliquer sur le lien ci-dessous, sélectionner votre nom puis signer :'
+    : '✍️ Veuillez cliquer sur le lien ci-dessous pour renseigner vos informations et signer :';
+  const msg   = `📋 *MAPHAR – Feuille de présence*\n\n${dest}*${selectedR.label}*\n📅 ${ds}${lieu}\n\n${consigne}\n${url}`;
   window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
 }
 
