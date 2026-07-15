@@ -231,7 +231,7 @@ async function init() {
     const d = snap.data();
     _reunionData = d;
     const _tb=document.getElementById('typeBadge');
-    const _tm={RMB:'Réunion Bureau Exécutif',RPA:'Réunion Partenaires',RPP:'Réunion Paritaire',AUTRE:'Autre réunion'};
+    const _tm={RMB:'Réunion Bureau Exécutif',RPA:'Réunion Partenaires',RPP:'Réunion Paritaire',TRN:'Tournée de terrain',AUTRE:(d.precisionAutre||'Autre réunion')};
     if(_tb){_tb.textContent=(_tm[d.typeReunion]||_tm.RMB).toUpperCase();_tb.style.display='inline-block';}
     document.getElementById('mName').textContent = d.label || 'Réunion Bureau Exécutif';
     if (d.date) {
@@ -345,6 +345,23 @@ async function handleSubmit() {
   const signature = getSigDataUrl();
 
   try {
+    // Vérification de doublon fiable côté serveur (par téléphone, insensible aux espaces/formats)
+    // — remplace l'ancienne détection qui ne se basait que sur le localStorage de l'appareil,
+    // facilement contournée en changeant de téléphone/navigateur et pouvant gonfler les stats.
+    const telNorm = telephone.replace(/\s/g,'');
+    if (telNorm) {
+      const dupSnap = await db.collection('maphar_presences')
+        .where('reunionId','==',reunionId)
+        .get({source:'server'});
+      const dejaSigne = dupSnap.docs.some(doc => (doc.data().telephone||'').replace(/\s/g,'') === telNorm);
+      if (dejaSigne) {
+        btn.disabled = false;
+        btn.textContent = '✅ Confirmer ma présence';
+        alert('⚠️ Une présence a déjà été enregistrée avec ce numéro de téléphone pour cette réunion.');
+        return;
+      }
+    }
+
     await db.collection('maphar_presences').add({
       reunionId, prenom, nom, fonction, telephone, email, signature,
       dateSignature: new Date().toISOString(),
@@ -368,7 +385,8 @@ function showWelcomeOverlay(prenom, nom, fonction) {
     RMB:'Réunion mensuelle du Bureau Exécutif',
     RPA:'Réunion avec les partenaires',
     RPP:'Réunion paritaire avec le partenaire principal',
-    AUTRE:'Autre réunion'
+    TRN:'Tournée de terrain',
+    AUTRE: d.precisionAutre ? d.precisionAutre : 'Autre réunion'
   };
   var typeLabel = tMap[d.typeReunion] || tMap.RMB;
   var logoEl = document.querySelector('.brand-shield img');
