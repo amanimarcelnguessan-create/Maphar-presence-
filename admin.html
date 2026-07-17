@@ -102,8 +102,13 @@
     .btn-xs{padding:4px 10px;font-size:11px;border-radius:7px;border:1.5px solid currentColor}
 
     /* TWO-COL */
-    .two-col{display:grid;grid-template-columns:1fr 1fr;gap:20px}
-    @media(max-width:768px){.two-col{grid-template-columns:1fr}}
+    .two-col{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:20px}
+    @media(max-width:768px){.two-col{grid-template-columns:minmax(0,1fr)}}
+    /* FIX : sans minmax(0,1fr), une grille CSS ne rétrécit jamais en dessous de la largeur naturelle
+       de son contenu (ici les 2 QR codes 180px côte à côte). Sur une fenêtre/écran pas assez large,
+       ça forçait toute la page à déborder horizontalement — d'où les boutons et libellés coupés à
+       droite (ex: "Imprimer QR Exécutif", "WhatsApp –…"). min-width:0 sur les cartes complète le fix. */
+    .two-col>.card{min-width:0}
 
     /* REUNION LIST */
     .r-list{display:flex;flex-direction:column;gap:10px}
@@ -319,20 +324,20 @@ service cloud.firestore {
           </div>
           <div id="qrReady" style="display:none">
             <!-- Deux QR côte à côte -->
-            <div style="display:flex;gap:24px;flex-wrap:wrap;justify-content:center">
+            <div style="display:flex;gap:16px;flex-wrap:wrap;justify-content:center">
               <!-- QR BEX -->
-              <div style="flex:1;min-width:200px;text-align:center">
+              <div style="flex:1;min-width:150px;max-width:220px;text-align:center">
                 <div style="background:#0f2557;color:#fff;font-size:11px;font-weight:700;letter-spacing:1px;padding:6px 12px;border-radius:8px 8px 0 0;text-transform:uppercase">Bureau Exécutif</div>
                 <div style="border:2px solid #0f2557;border-top:none;border-radius:0 0 8px 8px;padding:12px">
-                  <img id="qrImgBex" src="" alt="QR BEX" width="180" height="180">
+                  <img id="qrImgBex" src="" alt="QR BEX" width="180" height="180" style="max-width:100%;height:auto">
                   <div style="font-size:10px;color:var(--grey);margin-top:6px">Membres BEX — sélection + signature</div>
                 </div>
               </div>
               <!-- QR Autres participants -->
-              <div style="flex:1;min-width:200px;text-align:center">
+              <div style="flex:1;min-width:150px;max-width:220px;text-align:center">
                 <div style="background:#166534;color:#fff;font-size:11px;font-weight:700;letter-spacing:1px;padding:6px 12px;border-radius:8px 8px 0 0;text-transform:uppercase">Autres participants</div>
                 <div style="border:2px solid #166534;border-top:none;border-radius:0 0 8px 8px;padding:12px">
-                  <img id="qrImg" src="" alt="QR Autres" width="180" height="180">
+                  <img id="qrImg" src="" alt="QR Autres" width="180" height="180" style="max-width:100%;height:auto">
                   <div style="font-size:10px;color:var(--grey);margin-top:6px">Invités & membres — formulaire complet</div>
                 </div>
               </div>
