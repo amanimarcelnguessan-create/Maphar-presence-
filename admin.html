@@ -548,6 +548,13 @@ service cloud.firestore {
       <div class="f-group"><label>Fonction *</label><input type="text" id="e-fonction"></div>
       <div class="f-group"><label>Téléphone *</label><input type="tel" id="e-telephone"></div>
       <div class="f-group" style="grid-column:1/-1"><label>Email</label><input type="email" id="e-email"></div>
+      <div class="f-group" style="grid-column:1/-1">
+        <label>Membre BEX associé <span style="font-weight:400;color:var(--grey)">(pour les statistiques et le perdiem)</span></label>
+        <select id="e-membreId">
+          <option value="">— Aucun (participant hors BEX) —</option>
+        </select>
+        <div id="e-membre-hint" style="font-size:11px;margin-top:4px;"></div>
+      </div>
     </div>
     <div class="modal-foot">
       <button class="btn btn-outline" onclick="closeModal()">Annuler</button>
@@ -903,10 +910,35 @@ function renderPresences(filter='') {
 
 function filterTbl() { renderPresences(document.getElementById('srch').value); }
 
-function openEdit(id) {
+async function openEdit(id) {
   const p=presences.find(x=>x.id===id); if(!p)return;
   document.getElementById('eId').value=id;
   ['prenom','nom','fonction','telephone','email'].forEach(k=>document.getElementById('e-'+k).value=p[k]||'');
+
+  // Charger la liste des membres si elle n'a pas encore été chargée (ex: on arrive
+  // directement sur l'onglet Présences sans être passé par l'onglet Membres).
+  if (!membres.length) { try { await loadMembres(); } catch(e) {} }
+
+  const sel = document.getElementById('e-membreId');
+  sel.innerHTML = '<option value="">— Aucun (participant hors BEX) —</option>' +
+    membres.map(m => `<option value="${m.id}">${esc((m.nom||'').toUpperCase())} ${esc(m.prenom||'')} — ${esc(m.fonction||'')}</option>`).join('');
+
+  const idx = buildMembreIndex(membres);
+  const midAuto = matchMembreId(p, idx);
+  sel.value = p.membreId || midAuto || '';
+
+  const hint = document.getElementById('e-membre-hint');
+  if (p.membreId) {
+    hint.textContent = '✅ Déjà associé (sélectionné dans la liste au moment du scan)';
+    hint.style.color = 'var(--green)';
+  } else if (midAuto) {
+    hint.textContent = '🔎 Reconnu automatiquement par nom/téléphone — vérifiez que c\'est le bon membre';
+    hint.style.color = '#d97706';
+  } else {
+    hint.textContent = 'Aucune correspondance automatique — sélectionnez le membre concerné si besoin';
+    hint.style.color = 'var(--grey)';
+  }
+
   document.getElementById('editBg').classList.add('show');
 }
 function closeModal() { document.getElementById('editBg').classList.remove('show'); }
@@ -915,7 +947,9 @@ async function saveEdit() {
   const id=document.getElementById('eId').value;
   const d={prenom:document.getElementById('e-prenom').value.trim(),nom:document.getElementById('e-nom').value.trim(),
     fonction:document.getElementById('e-fonction').value.trim(),telephone:document.getElementById('e-telephone').value.trim(),
-    email:document.getElementById('e-email').value.trim(),modifiedAt:new Date().toISOString()};
+    email:document.getElementById('e-email').value.trim(),
+    membreId:document.getElementById('e-membreId').value||null,
+    modifiedAt:new Date().toISOString()};
   if (!d.prenom||!d.nom||!d.fonction||!d.telephone){toast('Champs obligatoires manquants','err');return;}
   try { await db.collection('maphar_presences').doc(id).update(d); closeModal(); toast('Mise à jour ✅','ok'); }
   catch(e){toast('Erreur','err');}
@@ -1446,20 +1480,13 @@ async function purgerPresencesOrphelines() {
     'Les membres ayant saisi manuellement mais dont le nom est reconnu sont CONSERVÉS.'
   )) return;
   try {
-    // 1. Charger tous les membres actifs avec normalisation
+    // 1. Charger tous les membres actifs et construire l'index robuste (partagé avec buildStats)
     const mSnap = await db.collection('maphar_membres').get({source:'server'});
-    const membres = mSnap.docs.map(d => d.data());
-    // Index par téléphone normalisé
-    const telActifs = new Set(
-      membres.map(m=>(m.telephone||'').replace(/\s/g,'')).filter(Boolean)
-    );
-    // Index par nom normalisé (nom seul)
-    const nomActifsNorm = new Set(
-      membres.map(m=>normalize(m.nom)).filter(Boolean)
-    );
-    // Index par nom+prénom normalisé (combiné)
-    const fullNameActifs = new Set(
-      membres.map(m=>normalize(`${m.nom||''} ${m.prenom||''}`)).filter(Boolean)
+    const membres = mSnap.docs.map(d => ({id:d.id, ...d.data()}));
+    const {telToId, tokenToId} = buildMembreIndex(membres);
+    // Conserve aussi la reconnaissance par nom seul (saisie manuelle sans prénom)
+    const nomSeulActifs = new Set(
+      membres.map(m => normalizeNomTokens(m.nom, '')).filter(Boolean)
     );
 
     // 2. Charger toutes les présences
@@ -1467,16 +1494,16 @@ async function purgerPresencesOrphelines() {
 
     const aSupprimer = pSnap.docs.filter(d => {
       const p = d.data();
-      const tel       = (p.telephone||'').replace(/\s/g,'');
-      const nomNorm   = normalize(p.nom);
-      const fullNorm  = normalize(`${p.nom||''} ${p.prenom||''}`);
+      const tel  = normalizeTel(p.telephone);
+      const tok  = normalizeNomTokens(p.nom, p.prenom);
+      const nomSeul = normalizeNomTokens(p.nom, '');
 
       // Conserver si téléphone reconnu
-      if (tel && telActifs.has(tel)) return false;
+      if (tel && telToId[tel]) return false;
+      // Conserver si nom+prénom reconnu (insensible à l'ordre/titres)
+      if (tok && tokenToId[tok]) return false;
       // Conserver si nom seul reconnu (saisie manuelle sans prénom)
-      if (nomNorm && nomActifsNorm.has(nomNorm)) return false;
-      // Conserver si nom+prénom reconnu
-      if (fullNorm && fullNameActifs.has(fullNorm)) return false;
+      if (nomSeul && nomSeulActifs.has(nomSeul)) return false;
 
       // Orpheline confirmée : ni téléphone ni nom ne correspond à aucun membre
       return true;
@@ -1506,6 +1533,47 @@ async function purgerPresencesOrphelines() {
   } catch(e) { console.error(e); toast('Erreur de purge','err'); }
 }
 
+// ── Correspondance robuste membre BEX (saisie libre incluse) ──────────────
+// Un membre du BEX peut être reconnu de 3 façons, par ordre de fiabilité :
+//  1) membreId (sélectionné dans la liste déroulante de scan-bex.html)
+//  2) téléphone, normalisé pour tolérer indicatif +225, tirets/espaces, 0 initial
+//  3) nom + prénom, comparés en jetons (insensible à l'ordre, aux accents, à la
+//     casse, et aux titres comme "Dr"/"Pr"/"Mme") — pour couvrir le cas où un
+//     membre du BEX saisit son nom lui-même (formulaire libre) plutôt que de
+//     choisir dans la liste préétablie.
+const TITRES_HONORIFIQUES = ['dr','pr','pre','prof','professeur','docteur','m','mr','mme','melle','mlle','me'];
+
+function normalizeTel(tel) {
+  let d = (tel||'').replace(/\D+/g,'');       // ne garder que les chiffres
+  d = d.replace(/^225/,'');                    // retirer l'indicatif Côte d'Ivoire si présent
+  d = d.replace(/^0+/,'');                     // retirer le(s) zéro(s) initial(aux)
+  return d;
+}
+function normalizeNomTokens(nom, prenom) {
+  const all = normalize((nom||'')+' '+(prenom||'')).split(' ')
+    .filter(w => w && TITRES_HONORIFIQUES.indexOf(w) === -1);
+  return all.sort().join(' ');
+}
+function buildMembreIndex(membres) {
+  const membreById={}, telToId={}, tokenToId={};
+  membres.forEach(m=>{
+    membreById[m.id]=m;
+    const tel=normalizeTel(m.telephone);
+    if(tel) telToId[tel]=m.id;
+    const tok=normalizeNomTokens(m.nom, m.prenom);
+    if(tok) tokenToId[tok]=m.id;
+  });
+  return {membreById, telToId, tokenToId};
+}
+function matchMembreId(p, idx) {
+  if (p.membreId && idx.membreById[p.membreId]) return p.membreId;
+  const tel = normalizeTel(p.telephone);
+  if (tel && idx.telToId[tel]) return idx.telToId[tel];
+  const tok = normalizeNomTokens(p.nom, p.prenom);
+  if (tok && idx.tokenToId[tok]) return idx.tokenToId[tok];
+  return null;
+}
+
 async function buildStats() {
   try {
     const [rSnap, snap, mSnap] = await Promise.all([
@@ -1514,23 +1582,16 @@ async function buildStats() {
       db.collection('maphar_membres').get({source:'server'})
     ]);
     const allReunions = rSnap.docs.map(d=>({id:d.id,...d.data()}));
-    const all         = snap.docs.map(d=>d.data());
-    const membres     = mSnap.docs.map(d=>d.data());
+    const all         = snap.docs.map(d=>({id:d.id, ...d.data()}));
+    const membres     = mSnap.docs.map(d=>({id:d.id, ...d.data()}));
 
     const totalR = allReunions.length;
     const totalP = all.length;
     const moyP   = totalR ? (totalP/totalR).toFixed(1) : 0;
     const totalM = membres.length;
 
-    // Index canoniques membres BEX (par id Firestore = clé fiable, + tél + nom normalisé en secours)
-    const membreById={}, telToId={}, normToId={};
-    membres.forEach(m=>{
-      membreById[m.id]=m;
-      const tel=(m.telephone||'').replace(/\s/g,'');
-      if(tel) telToId[tel]=m.id;
-      const k=normalize((m.nom||'')+' '+(m.prenom||''));
-      if(k) normToId[k]=m.id;
-    });
+    // Index canoniques membres BEX (par id Firestore = clé fiable, + tél + nom en jetons en secours)
+    const {membreById, telToId, tokenToId} = buildMembreIndex(membres);
     const labelOf=m=>((m.nom||'').toUpperCase()+' '+(m.prenom||'')).trim();
 
     // Regroupement présences par membre
@@ -1539,15 +1600,11 @@ async function buildStats() {
     const compteur={};
 
     all.forEach(p=>{
-      const tel=(p.telephone||'').replace(/\s/g,'');
-      const fNorm=normalize((p.nom||'')+' '+(p.prenom||''));
       // FIX : on identifie d'abord par membreId (stocké par scan-bex.html à chaque signature) —
-      // c'est la clé la plus fiable, insensible aux variantes/fautes de saisie du nom.
-      // Le tél. puis le nom normalisé ne servent qu'en secours (anciennes présences sans membreId).
-      const mid = (p.membreId && membreById[p.membreId]) ? p.membreId
-                : (tel && telToId[tel]) ? telToId[tel]
-                : (fNorm && normToId[fNorm]) ? normToId[fNorm]
-                : null;
+      // c'est la clé la plus fiable. Le tél. puis le nom (en jetons, insensible à l'ordre/titres)
+      // servent de secours — notamment pour un membre BEX qui aurait saisi son nom lui-même via
+      // le formulaire libre plutôt que la liste déroulante.
+      const mid = matchMembreId(p, {membreById, telToId, tokenToId});
       let cle, lbl;
       if (mid) {
         cle = 'm:'+mid;
@@ -1556,7 +1613,8 @@ async function buildStats() {
         // Présence non rattachée à un membre connu (invité / saisie libre) : on la garde quand même
         // au lieu de la jeter silencieusement comme avant (ancien bug : "nom:?" était ignoré).
         const rawLbl=((p.nom||'').toUpperCase()+' '+(p.prenom||'')).trim();
-        cle = tel ? 'tel:'+tel : 'nom:'+(fNorm || ('inconnu:'+(p.id||Math.random())));
+        const telN=normalizeTel(p.telephone), tokN=normalizeNomTokens(p.nom,p.prenom);
+        cle = telN ? 'tel:'+telN : 'nom:'+(tokN || ('inconnu:'+(p.id||Math.random())));
         lbl = rawLbl || 'Présence sans nom';
       }
       if(!compteur[cle]) compteur[cle]={lbl:lbl||'?',count:0,rs:new Set(),isMembre:!!mid};
@@ -1628,17 +1686,13 @@ async function buildStats() {
     function buildCompteurForType(typeKey){
       const c={};
       all.filter(p=>reunionType[p.reunionId]===typeKey).forEach(p=>{
-        const tel=(p.telephone||'').replace(/\s/g,'');
-        const fNorm=normalize((p.nom||'')+' '+(p.prenom||''));
-        const mid = (p.membreId && membreById[p.membreId]) ? p.membreId
-                  : (tel && telToId[tel]) ? telToId[tel]
-                  : (fNorm && normToId[fNorm]) ? normToId[fNorm]
-                  : null;
+        const mid = matchMembreId(p, {membreById, telToId, tokenToId});
         let cle, lbl;
         if (mid) { cle='m:'+mid; lbl=labelOf(membreById[mid]); }
         else {
           const rawLbl=((p.nom||'').toUpperCase()+' '+(p.prenom||'')).trim();
-          cle = tel ? 'tel:'+tel : 'nom:'+(fNorm || ('inconnu:'+(p.id||Math.random())));
+          const telN=normalizeTel(p.telephone), tokN=normalizeNomTokens(p.nom,p.prenom);
+          cle = telN ? 'tel:'+telN : 'nom:'+(tokN || ('inconnu:'+(p.id||Math.random())));
           lbl = rawLbl || 'Présence sans nom';
         }
         if(!c[cle]) c[cle]={lbl:lbl||'?',count:0,rs:new Set(),isMembre:!!mid};
