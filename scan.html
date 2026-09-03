@@ -193,6 +193,23 @@ const firebaseConfig = {
 const params    = new URLSearchParams(window.location.search);
 const reunionId = params.get('reunion');
 
+// ── Normalisation pour la détection fiable de doublons (alignée sur admin.html)
+const TITRES_HONORIFIQUES = ['dr','pr','mme','mr','m','mlle'];
+function normalizeTel(tel) {
+  let d = (tel||'').replace(/\D+/g,'');   // ne garder que les chiffres
+  d = d.replace(/^225/,'');               // retirer l'indicatif Côte d'Ivoire si présent
+  d = d.replace(/^0+/,'');                // retirer le(s) zéro(s) initial(aux)
+  return d;
+}
+function normalizeStr(str) {
+  return (str||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9\s]/g,'').trim().replace(/\s+/g,' ');
+}
+function normalizeNomTokens(nom, prenom) {
+  const all = normalizeStr((nom||'')+' '+(prenom||'')).split(' ')
+    .filter(w => w && TITRES_HONORIFIQUES.indexOf(w) === -1);
+  return all.sort().join(' ');
+}
+
 function show(id) {
   ['loadingView','formView','successView','errorView'].forEach(v=>{
     document.getElementById(v).style.display=(v===id)?'block':'none';
@@ -345,21 +362,25 @@ async function handleSubmit() {
   const signature = getSigDataUrl();
 
   try {
-    // Vérification de doublon fiable côté serveur (par téléphone, insensible aux espaces/formats)
-    // — remplace l'ancienne détection qui ne se basait que sur le localStorage de l'appareil,
-    // facilement contournée en changeant de téléphone/navigateur et pouvant gonfler les stats.
-    const telNorm = telephone.replace(/\s/g,'');
-    if (telNorm) {
-      const dupSnap = await db.collection('maphar_presences')
-        .where('reunionId','==',reunionId)
-        .get({source:'server'});
-      const dejaSigne = dupSnap.docs.some(doc => (doc.data().telephone||'').replace(/\s/g,'') === telNorm);
-      if (dejaSigne) {
-        btn.disabled = false;
-        btn.textContent = '✅ Confirmer ma présence';
-        alert('⚠️ Une présence a déjà été enregistrée avec ce numéro de téléphone pour cette réunion.');
-        return;
-      }
+    // Vérification de doublon fiable côté serveur — comparaison sur téléphone ET nom/prénom
+    // normalisés (même logique que admin.html), pour détecter la même personne même si le
+    // numéro est saisi sous un format différent d'une fois à l'autre (espaces, +225, 0 initial…).
+    const telNorm = normalizeTel(telephone);
+    const nomNorm = normalizeNomTokens(nom, prenom);
+    const dupSnap = await db.collection('maphar_presences')
+      .where('reunionId','==',reunionId)
+      .get({source:'server'});
+    const dejaSigne = dupSnap.docs.some(doc => {
+      const d = doc.data();
+      const sameTel = telNorm && normalizeTel(d.telephone) === telNorm;
+      const sameNom = nomNorm && normalizeNomTokens(d.nom, d.prenom) === nomNorm;
+      return sameTel || sameNom;
+    });
+    if (dejaSigne) {
+      btn.disabled = false;
+      btn.textContent = '✅ Confirmer ma présence';
+      alert('⚠️ Une présence a déjà été enregistrée pour cette personne (même téléphone ou même nom) pour cette réunion.');
+      return;
     }
 
     await db.collection('maphar_presences').add({

@@ -158,6 +158,23 @@ let reunion = null;
 let membres = [];
 let sigCanvas, sigCtx, isSigning = false, hasSig = false;
 
+// ── Normalisation pour la détection fiable de doublons (alignée sur admin.html)
+const TITRES_HONORIFIQUES = ['dr','pr','mme','mr','m','mlle'];
+function normalizeTel(tel) {
+  let d = (tel||'').replace(/\D+/g,'');
+  d = d.replace(/^225/,'');
+  d = d.replace(/^0+/,'');
+  return d;
+}
+function normalizeStr(str) {
+  return (str||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9\s]/g,'').trim().replace(/\s+/g,' ');
+}
+function normalizeNomTokens(nom, prenom) {
+  const all = normalizeStr((nom||'')+' '+(prenom||'')).split(' ')
+    .filter(w => w && TITRES_HONORIFIQUES.indexOf(w) === -1);
+  return all.sort().join(' ');
+}
+
 // ── États UI
 function show(id)  { document.getElementById(id).classList.add('show'); }
 function hide(id)  { document.getElementById(id).classList.remove('show'); }
@@ -347,16 +364,27 @@ async function handleSubmit() {
   btn.textContent = '⏳ Enregistrement…';
 
   try {
-    // Vérifier si ce membre a déjà signé cette réunion
+    const m = membres.find(x => x.id === membreId);
+    const telNorm = normalizeTel(m?.telephone);
+    const nomNorm = normalizeNomTokens(m?.nom, m?.prenom);
+
+    // Vérifier si ce membre a déjà signé cette réunion — par membreId (cas normal), et en filet
+    // de sécurité par téléphone/nom normalisés (couvre le cas d'une fiche membre en double dans
+    // la liste BEX, qui donnerait un membreId différent pour la même personne).
     const existing = await db.collection('maphar_presences')
       .where('reunionId', '==', reunion.id)
-      .where('membreId', '==', membreId)
       .get({source:'server'});
+    const dejaSigne = existing.docs.some(doc => {
+      const d = doc.data();
+      if (d.membreId === membreId) return true;
+      const sameTel = telNorm && normalizeTel(d.telephone) === telNorm;
+      const sameNom = nomNorm && normalizeNomTokens(d.nom, d.prenom) === nomNorm;
+      return sameTel || sameNom;
+    });
 
-    if (!existing.empty) {
+    if (dejaSigne) {
       btn.disabled = false;
       btn.textContent = '✅ Confirmer ma présence';
-      const m = membres.find(x => x.id === membreId);
       setForm(false);
       document.getElementById('doneTitle').textContent = 'Déjà enregistré';
       document.getElementById('doneSub').textContent =
@@ -364,8 +392,6 @@ async function handleSubmit() {
       show('stateDone');
       return;
     }
-
-    const m = membres.find(x => x.id === membreId);
     const signature = sigCanvas.toDataURL('image/png');
 
     await db.collection('maphar_presences').add({
