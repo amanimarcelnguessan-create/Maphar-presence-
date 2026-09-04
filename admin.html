@@ -110,16 +110,17 @@
        droite (ex: "Imprimer QR Exécutif", "WhatsApp –…"). min-width:0 sur les cartes complète le fix. */
     .two-col>.card{min-width:0}
 
-    /* REUNION LIST */
-    .r-list{display:flex;flex-direction:column;gap:10px}
-    .r-item{display:flex;align-items:center;gap:12px;padding:14px 16px;border:1.5px solid var(--border);border-radius:13px;cursor:pointer;transition:all .2s}
+    /* REUNION LIST — grille de cartes */
+    .r-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px}
+    .r-item{display:flex;flex-direction:column;gap:8px;padding:14px 15px;border:1.5px solid var(--border);border-radius:14px;cursor:pointer;transition:all .2s}
     .r-item:hover{border-color:#bfdbfe;background:#f0f7ff}.r-item.sel{border-color:var(--blue);background:var(--sky)}
+    .r-item-top{display:flex;align-items:center;justify-content:space-between}
     .r-dot{width:10px;height:10px;border-radius:50%;background:var(--border);flex-shrink:0}.r-item.sel .r-dot{background:var(--blue)}
-    .r-info{flex:1;min-width:0}
-    .r-label{font-size:14px;font-weight:600;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .r-date{font-size:12px;color:var(--grey);margin-top:2px}
-    .r-count{background:#e0e7ff;color:#3730a3;border-radius:20px;padding:3px 11px;font-size:12px;font-weight:700;white-space:nowrap}
-    .r-del{color:#cbd5e1;cursor:pointer;font-size:16px;padding:4px;flex-shrink:0}.r-del:hover{color:var(--red)}
+    .r-info{min-width:0}
+    .r-label{font-size:13px;font-weight:700;color:#0f172a;line-height:1.3;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+    .r-date{font-size:11px;color:var(--grey);margin-top:3px}
+    .r-count{background:#e0e7ff;color:#3730a3;border-radius:20px;padding:3px 11px;font-size:12px;font-weight:700;white-space:nowrap;align-self:flex-start}
+    .r-del{color:#cbd5e1;cursor:pointer;font-size:16px;padding:2px;flex-shrink:0}.r-del:hover{color:var(--red)}
 
     /* QR */
     .qr-area{display:flex;flex-direction:column;align-items:center;gap:16px}
@@ -167,9 +168,11 @@
     .toast.show{opacity:1;transform:translateY(0)}
     .toast.ok{background:var(--green)}.toast.err{background:var(--red)}
     .divider{height:1px;background:var(--border);margin:16px 0}
-    .histo-item{border:1.5px solid var(--border);border-radius:14px;margin-bottom:10px;overflow:hidden;transition:border-color .2s}
+    #histoList{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px;align-items:start}
+    .histo-item{border:1.5px solid var(--border);border-radius:14px;overflow:hidden;transition:border-color .2s;grid-column:span 1}
+    .histo-item.open{grid-column:1/-1;border-color:var(--blue)}
     .histo-item:hover{border-color:#bfdbfe}
-    .histo-head{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;cursor:pointer;background:#fafbff;transition:background .15s}
+    .histo-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:14px 16px;cursor:pointer;background:#fafbff;transition:background .15s}
     .histo-head:hover{background:#f0f7ff}
     .histo-body{padding:16px;border-top:1px solid var(--border);background:#fff}
     @media print{.no-print{display:none!important} thead{display:table-header-group} tr{page-break-inside:avoid}}
@@ -794,15 +797,20 @@ function renderRList() {
     const ds  = r.date ? new Date(r.date+'T00:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'long',year:'numeric'}) : '';
     const sel = selectedR?.id===r.id ? 'sel' : '';
     return `<div class="r-item ${sel}" onclick="selectR('${r.id}')">
-      <div class="r-dot"></div>
-      <div class="r-info"><div class="r-label">${esc(r.label)}</div><div class="r-date">📅 ${ds}</div></div>
+      <div class="r-item-top">
+        <div class="r-dot"></div>
+        <span class="r-del" onclick="event.stopPropagation();delR('${r.id}')" title="Supprimer">🗑️</span>
+      </div>
+      <div class="r-info">
+        <div class="r-label">${esc(r.label)}</div>
+        <div class="r-date">📅 ${ds}</div>
+      </div>
       <span class="r-count" id="rc-${r.id}">…</span>
-      <span class="r-del" onclick="event.stopPropagation();delR('${r.id}')">🗑️</span>
     </div>`;
   }
 
   function sectionLabel(text, color) {
-    return `<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:${color};margin:12px 0 6px;padding:0 4px">${text}</div>`;
+    return `<div style="grid-column:1/-1;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:${color};margin:12px 0 6px;padding:0 4px">${text}</div>`;
   }
 
   let html = '';
@@ -1220,14 +1228,12 @@ async function filterHistorique() {
     const ds = r.date ? new Date(r.date+'T00:00:00').toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'}) : '';
     return `<div class="histo-item" id="hi-${r.id}">
       <div class="histo-head" onclick="toggleHisto('${r.id}')">
-        <div>
-          <div style="font-size:14px;font-weight:700;color:#0f172a">${esc(r.label)}</div>
-          <div style="font-size:12px;color:var(--grey);margin-top:2px;text-transform:capitalize">📅 ${ds}</div>
+        <div style="min-width:0">
+          <div style="font-size:13px;font-weight:700;color:#0f172a;line-height:1.3">${esc(r.label)}</div>
+          <div style="font-size:11px;color:var(--grey);margin-top:3px;text-transform:capitalize">📅 ${ds}</div>
+          <span class="r-count" id="hc-${r.id}" style="display:inline-block;margin-top:8px">…</span>
         </div>
-        <div style="display:flex;align-items:center;gap:10px">
-          <span class="r-count" id="hc-${r.id}">…</span>
-          <span style="color:var(--grey);font-size:18px" id="hArrow-${r.id}">›</span>
-        </div>
+        <span style="color:var(--grey);font-size:18px;flex-shrink:0" id="hArrow-${r.id}">›</span>
       </div>
       <div class="histo-body" id="hb-${r.id}" style="display:none">
         <div style="display:flex;gap:8px;margin-bottom:12px" class="no-print">
@@ -1292,7 +1298,7 @@ async function globalSearch() {
         const sigHtml = p.signature ? `<img src="${p.signature}" style="height:30px;max-width:80px;border-radius:4px">` : '–';
         return `<tr><td>${i+1}</td><td><strong>${esc((p.nom||'').toUpperCase())}</strong></td><td>${esc(p.prenom)}</td><td>${esc(p.fonction)}</td><td>${esc(p.telephone)}</td><td>${h}</td><td>${sigHtml}</td></tr>`;
       }).join('');
-      html += `<div class="histo-item" style="margin-bottom:10px">
+      html += `<div class="histo-item open" style="grid-column:1/-1">
         <div class="histo-head" style="cursor:default">
           <div><div style="font-size:14px;font-weight:700">${esc(label)}</div><div style="font-size:12px;color:var(--grey)">📅 ${ds}</div></div>
           <span class="r-count">${list.length} résultat(s)</span>
@@ -1313,6 +1319,7 @@ async function globalSearch() {
 }
 
 async function toggleHisto(id) {
+  const item  = document.getElementById('hi-'+id);
   const body  = document.getElementById('hb-'+id);
   const arrow = document.getElementById('hArrow-'+id);
   const isOpen = body.style.display === 'block';
@@ -1320,11 +1327,13 @@ async function toggleHisto(id) {
   if (isOpen) {
     body.style.display = 'none';
     arrow.textContent = '›';
+    item.classList.remove('open');
     return;
   }
 
   body.style.display = 'block';
   arrow.textContent = '⌄';
+  item.classList.add('open');
 
   // Load presences if not cached
   if (!histoPresences[id]) {
