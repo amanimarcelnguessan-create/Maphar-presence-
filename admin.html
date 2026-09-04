@@ -480,17 +480,13 @@ service cloud.firestore {
       </div>
 
       <!-- KPI ligne 2 : indicateurs de gouvernance -->
-      <div class="kpi-grid-3">
+      <div class="kpi-grid-2">
         <div class="card" style="text-align:center;padding:16px 8px">
           <div style="font-size:26px;font-weight:900" id="st-taux-global">–</div>
           <div style="font-size:10px;color:var(--grey);margin-top:2px;font-weight:700;text-transform:uppercase">Taux présence global</div>
           <div style="margin-top:8px;height:5px;background:var(--border);border-radius:3px">
             <div id="st-taux-bar" style="height:5px;background:var(--green);border-radius:3px;width:0%;transition:width .8s"></div>
           </div>
-        </div>
-        <div class="card" style="text-align:center;padding:16px 8px">
-          <div style="font-size:26px;font-weight:900;color:#7c3aed" id="st-quorum">–</div>
-          <div style="font-size:10px;color:var(--grey);margin-top:2px;font-weight:700;text-transform:uppercase">Réunions avec quorum</div>
         </div>
         <div class="card" style="text-align:center;padding:16px 8px">
           <div style="font-size:26px;font-weight:900;color:var(--green)" id="st-assidus">–</div>
@@ -530,14 +526,17 @@ service cloud.firestore {
       <div class="card" style="margin-bottom:14px">
         <div class="card-title" style="justify-content:space-between;flex-wrap:wrap;gap:8px">
           <span>🗂️ Tableau croisé — Présence par réunion</span>
-          <select id="croiseFilter" onchange="renderCroise()" class="no-print" style="font-size:12px;padding:5px 10px;border:1px solid var(--border);border-radius:8px;background:#fff;color:var(--navy);font-weight:600">
-            <option value="ALL">Toutes catégories</option>
-            <option value="RMB">📋 RMB – Bureau Exécutif</option>
-            <option value="RPA">🤝 RPA – Partenaires</option>
-            <option value="RPP">⚖️ RPP – Paritaire</option>
-            <option value="TRN">🧭 Tournées de terrain</option>
-            <option value="AUTRE">📌 Autre</option>
-          </select>
+          <div style="display:flex;gap:8px;flex-wrap:wrap" class="no-print">
+            <select id="croiseFilter" onchange="renderCroise()" style="font-size:12px;padding:5px 10px;border:1px solid var(--border);border-radius:8px;background:#fff;color:var(--navy);font-weight:600">
+              <option value="ALL">Toutes catégories</option>
+              <option value="RMB">📋 RMB – Bureau Exécutif</option>
+              <option value="RPA">🤝 RPA – Partenaires</option>
+              <option value="RPP">⚖️ RPP – Paritaire</option>
+              <option value="TRN">🧭 Tournées de terrain</option>
+              <option value="AUTRE">📌 Autre</option>
+            </select>
+            <button class="btn btn-sm" style="background:var(--navy);color:#fff" onclick="imprimerCroise()">🖨️ Imprimer</button>
+          </div>
         </div>
         <div style="overflow-x:auto">
           <div id="st-croise"><div class="empty-tbl"><div class="e-icon">📊</div><div class="e-title">Chargement…</div></div></div>
@@ -1738,10 +1737,6 @@ async function buildStats() {
     const taux=maxP>0?Math.round((totalP/maxP)*100):0;
     const tc=taux>=75?'var(--green)':taux>=50?'#d97706':'var(--red)';
 
-    // Quorum (>= 50% membres BEX)
-    const qSeuil=Math.max(1,Math.ceil((totalM||1)/2));
-    const avecQuorum=allReunions.filter(r=>all.filter(p=>p.reunionId===r.id).length>=qSeuil).length;
-
     // Assidus >= 75%
     const assidus=entries.filter(e=>e.isMembre&&totalR>0&&(e.rs.size/totalR)>=0.75).length;
 
@@ -1753,7 +1748,6 @@ async function buildStats() {
     const tEl=document.getElementById('st-taux-global');
     tEl.textContent=taux+'%'; tEl.style.color=tc;
     document.getElementById('st-taux-bar').style.cssText='height:5px;background:'+tc+';border-radius:3px;width:'+taux+'%;transition:width .8s';
-    document.getElementById('st-quorum').textContent=avecQuorum+'/'+totalR;
     document.getElementById('st-assidus').textContent=assidus;
 
     // Répartition par type
@@ -1776,7 +1770,7 @@ async function buildStats() {
     document.getElementById('st-tendance').innerHTML=last6.map(r=>{
       const cnt=all.filter(p=>p.reunionId===r.id).length;
       const h=Math.max(8,Math.round((cnt/tmax)*64));
-      const col=cnt>=qSeuil?'var(--green)':'#d97706';
+      const col='var(--blue)';
       return '<div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:1px">'
         +'<span style="font-size:10px;font-weight:700;color:'+col+'">'+cnt+'</span>'
         +'<div style="width:100%;height:'+h+'px;background:'+col+';border-radius:3px 3px 0 0;opacity:.85"></div></div>';
@@ -1867,8 +1861,7 @@ async function buildStats() {
       const cnt=all.filter(p=>p.reunionId===r.id).length;
       const ds=r.date?new Date(r.date+'T00:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'short',year:'numeric'}):'–';
       const tl={RMB:'RMB',RPA:'RPA',RPP:'RPP',TRN:'TOURNÉE',AUTRE:(r.precisionAutre?'AUTRE · '+r.precisionAutre:'AUTRE')}[r.typeReunion]||'–';
-      const hq=cnt>=qSeuil;
-      return {label:r.label,date:ds,type:tl,cnt,hq};
+      return {label:r.label,date:ds,type:tl,cnt};
     }).sort((a,b)=>b.cnt-a.cnt);
     const maxRP=parR[0]?.cnt||1;
     document.getElementById('st-par-reunion').innerHTML=parR.map(r=>
@@ -1877,8 +1870,6 @@ async function buildStats() {
       +'<div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap">'
       +'<span style="font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:170px">'+esc(r.label)+'</span>'
       +'<span style="font-size:9px;background:#e0e7ff;color:#3730a3;border-radius:8px;padding:1px 6px;font-weight:700">'+r.type+'</span>'
-      +(r.hq?'<span style="font-size:9px;background:#dcfce7;color:#14532d;border-radius:8px;padding:1px 6px;font-weight:700">✓ Quorum</span>'
-             :'<span style="font-size:9px;background:#fee2e2;color:#7f1d1d;border-radius:8px;padding:1px 6px;font-weight:700">✗ Sans quorum</span>')
       +'</div>'
       +'<div style="font-size:11px;color:var(--grey)">'+r.date+'</div>'
       +'<div style="height:4px;background:var(--border);border-radius:2px;margin-top:3px">'
@@ -1957,6 +1948,75 @@ function renderCroise() {
 
   html += '</tbody></table>';
   box.innerHTML = html;
+}
+
+// ── Impression du tableau croisé (fenêtre dédiée, format paysage)
+function imprimerCroise() {
+  const d = window._croiseData;
+  if (!d) { toast('Statistiques non chargées','err'); return; }
+  const { allReunions, all, membreById, telToId, tokenToId, labelOf } = d;
+  const filter = document.getElementById('croiseFilter')?.value || 'ALL';
+  const tMap = {RMB:'RMB',RPA:'RPA',RPP:'RPP',TRN:'TOURNÉE',AUTRE:'AUTRE'};
+  const filterLbl = {ALL:'Toutes catégories',RMB:'RMB – Bureau Exécutif',RPA:'RPA – Partenaires',RPP:'RPP – Paritaire',TRN:'Tournées de terrain',AUTRE:'Autre'}[filter];
+
+  let reunions = allReunions.filter(r => filter==='ALL' || (r.typeReunion||'RMB')===filter);
+  reunions = reunions.filter(r => r.date).sort((a,b) => a.date.localeCompare(b.date));
+  if (!reunions.length) { toast('Aucune réunion à imprimer pour cette catégorie','err'); return; }
+
+  const presByMember = {};
+  all.forEach(p => {
+    const mid = matchMembreId(p, {membreById, telToId, tokenToId});
+    if (!mid) return;
+    if (!presByMember[mid]) presByMember[mid] = new Set();
+    if (p.reunionId) presByMember[mid].add(p.reunionId);
+  });
+  const membresListe = Object.values(membreById).sort((a,b) => (a.nom||'').localeCompare(b.nom||''));
+
+  const theadCols = reunions.map(r => {
+    const ds = new Date(r.date+'T00:00:00').toLocaleDateString('fr-FR',{day:'2-digit',month:'2-digit',year:'2-digit'});
+    return `<th>${tMap[r.typeReunion]||'–'}<br><span style="font-weight:400">${ds}</span></th>`;
+  }).join('');
+
+  const rows = membresListe.map(m => {
+    const set = presByMember[m.id] || new Set();
+    const cnt = reunions.filter(r => set.has(r.id)).length;
+    const cells = reunions.map(r => set.has(r.id)
+      ? '<td style="color:#15803d;font-weight:700">✓</td>'
+      : '<td style="color:#b91c1c;opacity:.55">✗</td>').join('');
+    return `<tr><td style="text-align:left;font-weight:700">${esc(labelOf(m))}</td>${cells}<td style="font-weight:800">${cnt}/${reunions.length}</td></tr>`;
+  }).join('');
+
+  const w = window.open('','_blank');
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
+  <title>Tableau croisé présences – MAPHAR</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;900&display=swap');
+    *{box-sizing:border-box;margin:0;padding:0}
+    @page{size:A4 landscape;margin:10mm 12mm}
+    body{font-family:'Outfit',Arial,sans-serif;padding:14px;color:#000;font-size:10px}
+    .header{display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:6px}
+    .org{font-size:16px;font-weight:900;color:#0f2557}
+    .org-sub{font-size:9px;color:#555}
+    .meta{text-align:center;font-size:11px;color:#333;margin-bottom:12px;padding-bottom:8px;border-bottom:2px solid #0f2557}
+    table{width:100%;border-collapse:collapse;font-size:9px}
+    th{background:#0f2557;color:#fff;padding:6px 5px;text-align:center;font-size:9px}
+    td{padding:5px;border-bottom:1px solid #e5e7eb;text-align:center}
+    tr:nth-child(even) td{background:#f8fafc}
+    .foot{margin-top:14px;display:flex;justify-content:space-between;font-size:10px;color:#555}
+  </style></head><body>
+  <div class="header">
+    <img src="${document.querySelector('img[style*="height:36px"][style*="border-radius:4px"]')?.src || ''}" style="height:50px;object-fit:contain">
+    <div><div class="org">MAPHAR – Bureau Exécutif</div><div class="org-sub">Mutuelle pour l'Assurance des Pharmaciens</div></div>
+  </div>
+  <div class="meta">🗂️ Tableau croisé de présence — ${esc(filterLbl)}</div>
+  <table>
+    <thead><tr><th style="text-align:left">Membre BEX</th>${theadCols}<th>Total</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>
+  <div class="foot"><span>${membresListe.length} membre(s) · ${reunions.length} réunion(s)</span><span>Édité le ${new Date().toLocaleDateString('fr-FR')}</span></div>
+  <script>window.onload=()=>window.print()<\/script>
+  </body></html>`);
+  w.document.close();
 }
 
 function toggleDark() {
