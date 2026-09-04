@@ -61,10 +61,21 @@
     .spinner{width:40px;height:40px;border:4px solid rgba(22,65,164,.15);border-top-color:var(--blue);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 16px}
     @keyframes spin{to{transform:rotate(360deg)}}
 
-    .welcome-overlay{position:fixed;inset:0;background:rgba(15,37,87,.96);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999;padding:24px;text-align:center}
+    .welcome-overlay{position:fixed;inset:0;background:radial-gradient(circle at 50% 22%, rgba(34,197,94,.28), rgba(15,37,87,.97) 62%);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999;padding:24px;text-align:center}
     .welcome-overlay.hidden{display:none}
     .confetti-wrap{position:fixed;inset:0;pointer-events:none;z-index:998;overflow:hidden}
     .confetti-wrap.hidden{display:none}
+    .w-card-pop{display:flex;flex-direction:column;align-items:center;animation:cardPop .5s cubic-bezier(.34,1.56,.64,1)}
+    @keyframes cardPop{0%{transform:scale(.7);opacity:0}100%{transform:scale(1);opacity:1}}
+    .w-check-wrap{position:relative;width:100px;height:100px;margin-bottom:16px}
+    .w-check-ring{position:absolute;inset:0;border-radius:50%;background:radial-gradient(circle,rgba(34,197,94,.4),transparent 70%);animation:ringPulse 1.8s ease-out infinite}
+    @keyframes ringPulse{0%{transform:scale(.55);opacity:.95}100%{transform:scale(1.7);opacity:0}}
+    .w-check-circle{width:100px;height:100px;position:relative;z-index:1}
+    .w-check-circle .bgc{fill:none;stroke:rgba(255,255,255,.25);stroke-width:4}
+    .w-check-circle .prog{fill:none;stroke:#22c55e;stroke-width:4;stroke-linecap:round;stroke-dasharray:264;stroke-dashoffset:264;transform:rotate(-90deg);transform-origin:50% 50%;animation:drawCircle .6s ease-out .1s forwards}
+    .w-check-circle .tick{fill:none;stroke:#fff;stroke-width:6;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:40;stroke-dashoffset:40;animation:drawTick .35s ease-out .68s forwards}
+    @keyframes drawCircle{to{stroke-dashoffset:0}}
+    @keyframes drawTick{to{stroke-dashoffset:0}}
     .w-logo-wrap{width:72px;height:72px;border-radius:12px;background:#fff;padding:4px;margin-bottom:12px}
     .w-logo-wrap img{width:64px;height:64px;object-fit:contain;border-radius:8px}
     .w-title{font-size:22px;font-weight:800;color:#fff;margin-bottom:6px}
@@ -74,6 +85,7 @@
     .w-chip{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);border-radius:20px;padding:4px 12px;font-size:12px;color:rgba(255,255,255,.85)}
     .w-close-btn{background:#22c55e;color:#fff;border:none;border-radius:14px;padding:14px 32px;font-size:15px;font-weight:700;cursor:pointer}
     .c{position:absolute;top:-12px;width:8px;height:8px;border-radius:2px;animation:fall linear infinite}
+    .c.c-round{border-radius:50%}
     @keyframes fall{to{transform:translateY(110vh) rotate(720deg)}}
     .type-badge{display:none;background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.35);color:#fff;font-size:10px;font-weight:700;letter-spacing:.7px;padding:3px 10px;border-radius:20px;text-transform:uppercase;margin-top:6px}
   </style>
@@ -460,14 +472,17 @@ function spawnConfetti() {
   var wrap = document.getElementById('confettiWrap');
   wrap.innerHTML = '';
   var colors = ['#22c55e','#3b82f6','#f59e0b','#ec4899','#8b5cf6','#06b6d4'];
-  for (var i = 0; i < 60; i++) {
-    var el = document.createElement('div'); el.className = 'c';
-    el.style.left = Math.random()*100 + 'vw';
+  for (var i = 0; i < 70; i++) {
+    var el = document.createElement('div');
+    var isRound = Math.random() > 0.5;
+    el.className = 'c' + (isRound ? ' c-round' : '');
+    el.style.left = (15 + Math.random()*70) + 'vw';
     el.style.background = colors[Math.floor(Math.random()*colors.length)];
     el.style.animationDuration = (2 + Math.random()*3) + 's';
-    el.style.animationDelay = (Math.random()*2) + 's';
-    el.style.width = (6 + Math.random()*8) + 'px';
-    el.style.height = el.style.width;
+    el.style.animationDelay = (Math.random()*1.3) + 's';
+    var size = 5 + Math.random()*9;
+    el.style.width = size + 'px';
+    el.style.height = (isRound ? size : size*2.3) + 'px';
     wrap.appendChild(el);
   }
 }
@@ -475,12 +490,22 @@ function spawnConfetti() {
 
 <!-- Overlay bienvenue -->
 <div class="welcome-overlay hidden" id="welcomeOverlay">
-  <div class="w-logo-wrap"><img id="overlayLogo" src="" alt="MAPHAR"></div>
-  <div class="w-title">Présence enregistrée !</div>
-  <div class="w-name-chip" id="wFullName"></div>
-  <div class="w-reunion-txt" id="wReunion"></div>
-  <div class="w-chips" id="wChips"></div>
-  <button class="w-close-btn" onclick="closeOverlay()">Fermer 🎉</button>
+  <div class="w-card-pop">
+    <div class="w-check-wrap">
+      <div class="w-check-ring"></div>
+      <svg class="w-check-circle" viewBox="0 0 100 100">
+        <circle class="bgc" cx="50" cy="50" r="42"/>
+        <circle class="prog" cx="50" cy="50" r="42"/>
+        <path class="tick" d="M32 52 L45 65 L70 36"/>
+      </svg>
+    </div>
+    <div class="w-logo-wrap"><img id="overlayLogo" src="" alt="MAPHAR"></div>
+    <div class="w-title">Présence enregistrée !</div>
+    <div class="w-name-chip" id="wFullName"></div>
+    <div class="w-reunion-txt" id="wReunion"></div>
+    <div class="w-chips" id="wChips"></div>
+    <button class="w-close-btn" onclick="closeOverlay()">Fermer 🎉</button>
+  </div>
 </div>
 <div class="confetti-wrap hidden" id="confettiWrap"></div>
 </body>
