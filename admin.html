@@ -338,12 +338,18 @@ service cloud.firestore {
         </div>
       </div>
 
-      <div class="card">
-        <div class="card-title">📋 Réunions existantes</div>
-        <div style="font-size:11px;color:var(--grey);margin:-6px 0 14px">Cliquez sur une réunion pour voir ses QR codes, liens et actions.</div>
-        <div id="rList">
-          <div class="empty-tbl"><div class="e-icon">📅</div><div class="e-title">Aucune réunion</div><div class="e-sub">Créez votre première réunion</div></div>
+      <div class="acc" id="acc-rlist">
+        <div class="acc-head" onclick="toggleAcc('acc-rlist')">
+          <span class="acc-head-title">📋 Réunions existantes</span>
+          <span class="chev">▾</span>
         </div>
+        <div class="acc-body"><div class="acc-body-inner">
+          <div style="font-size:11px;color:var(--grey);margin-bottom:14px">Cliquez sur une réunion pour voir ses QR codes, liens et actions.</div>
+          <div id="rList">
+            <div class="empty-tbl"><div class="e-icon">📅</div><div class="e-title">Aucune réunion</div><div class="e-sub">Créez votre première réunion</div></div>
+          </div>
+          <div class="acc-close-bar"><button class="acc-close-btn" onclick="event.stopPropagation();closeAcc('acc-rlist')">✕ Fermer</button></div>
+        </div></div>
       </div>
     </div><!-- /tab-reunions -->
 
@@ -382,34 +388,40 @@ service cloud.firestore {
 
     <!-- TAB HISTORIQUE -->
     <div id="tab-historique" class="panel">
-      <div class="card">
-        <div class="card-title">🗂️ Historique des réunions</div>
-        <div class="no-print" style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:20px;align-items:flex-end">
-          <div class="f-group" style="margin:0;min-width:100px;flex:1">
-            <label>Mois</label>
-            <select id="hMois" onchange="filterHistorique()">
-              <option value="">Tous</option>
-              <option value="01">Janvier</option><option value="02">Février</option>
-              <option value="03">Mars</option><option value="04">Avril</option>
-              <option value="05">Mai</option><option value="06">Juin</option>
-              <option value="07">Juillet</option><option value="08">Août</option>
-              <option value="09">Septembre</option><option value="10">Octobre</option>
-              <option value="11">Novembre</option><option value="12">Décembre</option>
-            </select>
-          </div>
-          <div class="f-group" style="margin:0;min-width:90px;flex:1">
-            <label>Année</label>
-            <select id="hAnnee" onchange="filterHistorique()"><option value="">Toutes</option></select>
-          </div>
-          <div class="f-group" style="margin:0;flex:2;min-width:140px">
-            <label>Recherche globale (nom, prénom…)</label>
-            <input type="text" id="hSearch" placeholder="🔍 Rechercher un membre…" oninput="globalSearch()">
-          </div>
-          <span class="count-pill" id="hCount">0 réunion</span>
+      <div class="acc" id="acc-histo">
+        <div class="acc-head" onclick="toggleAcc('acc-histo')">
+          <span class="acc-head-title">🗂️ Historique des réunions</span>
+          <span class="chev">▾</span>
         </div>
-        <div id="histoList">
-          <div class="empty-tbl"><div class="e-icon">🗂️</div><div class="e-title">Aucune réunion</div></div>
-        </div>
+        <div class="acc-body"><div class="acc-body-inner">
+          <div class="no-print" style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:20px;align-items:flex-end">
+            <div class="f-group" style="margin:0;min-width:100px;flex:1">
+              <label>Mois</label>
+              <select id="hMois" onclick="event.stopPropagation()" onchange="filterHistorique()">
+                <option value="">Tous</option>
+                <option value="01">Janvier</option><option value="02">Février</option>
+                <option value="03">Mars</option><option value="04">Avril</option>
+                <option value="05">Mai</option><option value="06">Juin</option>
+                <option value="07">Juillet</option><option value="08">Août</option>
+                <option value="09">Septembre</option><option value="10">Octobre</option>
+                <option value="11">Novembre</option><option value="12">Décembre</option>
+              </select>
+            </div>
+            <div class="f-group" style="margin:0;min-width:90px;flex:1">
+              <label>Année</label>
+              <select id="hAnnee" onclick="event.stopPropagation()" onchange="filterHistorique()"><option value="">Toutes</option></select>
+            </div>
+            <div class="f-group" style="margin:0;flex:2;min-width:140px">
+              <label>Recherche globale (nom, prénom…)</label>
+              <input type="text" id="hSearch" onclick="event.stopPropagation()" placeholder="🔍 Rechercher un membre…" oninput="globalSearch()">
+            </div>
+            <span class="count-pill" id="hCount">0 réunion</span>
+          </div>
+          <div id="histoList">
+            <div class="empty-tbl"><div class="e-icon">🗂️</div><div class="e-title">Aucune réunion</div></div>
+          </div>
+          <div class="acc-close-bar"><button class="acc-close-btn" onclick="event.stopPropagation();closeAcc('acc-histo')">✕ Fermer</button></div>
+        </div></div>
       </div>
     </div><!-- /tab-historique -->
 
@@ -858,6 +870,7 @@ async function createReunion() {
     document.getElementById('newAutreWrap').style.display='none';
     toast('Réunion créée ✅','ok');
     await loadReunions();
+    document.getElementById('acc-rlist')?.classList.add('open');
     toggleRCard(ref.id);
     document.getElementById('ri-'+ref.id)?.scrollIntoView({behavior:'smooth', block:'center'});
   } catch(e) { toast('Erreur de création','err'); }
